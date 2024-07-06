@@ -1,0 +1,1435 @@
+import 'macros' as {$}
+_G.PROJECTNAME, _G.VERSION = $FILE\sub(1,-5), "0.1a(#{$DATE})"
+import 'utf8'
+import 'lib.lume'
+import 'utl' as :L, :issubclass, :pos_in_box, :play, :toZenkaku
+import 'lib.maid64' -- 改造してy>256の場合、linearでmsaa=2とした
+-- require 'lib.gifcat' -- 全部に?入れているので、ここ消すだけで使わなくなる
+import 'ui' as :Scene, :SelectBox, :MessageBox, :BGM, :Watchdog
+import 'input' as :input, :SoftGamepad
+import 'BDF'
+import 'lib.tween' -- 改造してdelayを可能にした
+import 'color' as :hsv
+import 'bigmap' as :Map
+vudu = if DEBUGMODE then require 'lib.vudu' else nil
+if DEBUGMODE then require 'lib.inspect'
+local *
+
+love.window.setTitle(PROJECTNAME .. ' - v' .. VERSION)
+love.window.setMode(800, 512, if 'Android' == love.system.getOS() then {fullscreen: true, msaa:2} else {resizable: true, msaa: 2}) -- レトロ画面をコピーするだけならanti alias不要。gamepad描いているのでmsaaつけた
+maid64.setup(256, 256)
+-- if 'Android' == love.system.getOS() then maid64.canvas\setFilter('linear')
+love.mouse.getPosition = maid64.mouse.getPosition -- プログラム全体としてmaid64の座標系を使うことにする
+love.touch.getPosition0 = love.touch.getPosition -- 保存
+love.touch.getPosition = (id)-> maid64.transformPosition(love.touch.getPosition0(id))
+maid64.clearBG = -> gr.clear(gr.uipalette.text)
+-- os.lang = nil -- i18nを無効
+-- love.audio.setVolume(.65)
+
+-- maid64.canvasの外(screen)にSoftGamepadを描く→描画時に位置などを調整
+const softgamepad = SoftGamepad(SoftGamepad.LURDABButtons256)
+-- @diagnostic disable-next-line: duplicate-set-field
+love.draw = ->
+	love.draw1()
+	softgamepad.font, font = gr.newFlyweightFont($FONT1SUBSET, 28*maid64.scaler), softgamepad.font
+	softgamepad.buttons, buttons = {k, {x*maid64.scaler+maid64.x, y*maid64.scaler+maid64.y, r*maid64.scaler,label,pie} for k, {x,y,r,label,pie} in pairs softgamepad.buttons}, softgamepad.buttons
+	softgamepad\draw()
+	softgamepad.font, softgamepad.buttons = font, buttons
+
+export play_wait = (fn)->
+	s = play fn
+	while s\isPlaying() do coroutine.yield 1
+
+gr.uipalette.retro1 = gr.uipalette.base -- 体力が少ないときに赤にするもの
+
+const bdf1 = with BDF('assets/fonts/misaki_gothic_2nd.bdf') -- [ ]todo: 濁点、半濁点を分離して上に描画'assets/fonts/quan.bdf')
+	.fy = 8
+
+gr.draw_frame = (x, y, w, h, text = nil)->
+	gr.rectangle(gr.setColor(gr.uipalette.text) or 'fill', x*8-8, y*8-16, w*8+16, h*8+24, 5)
+	gr.rectangle(gr.setColor(gr.uipalette.retro1) or 'line', x*8-8+2, y*8-16+2, w*8+16-4, h*8+24-4, 5)
+	if text
+		w2 = bdf1\getWidth(text)
+		x2 = x*8+idiv((w*8-w2)/2,8)*8
+		gr.rectangle(gr.setColor(gr.uipalette.text) or 'fill', x2-2, y*8-16, w2+4, 8)
+		gr.points bdf1\points(gr.setColor(gr.uipalette.retro1) or text, x2, y*8-16)
+		gr.points()
+
+blink = -> if love.timer.getTime() % 1 > 0.5 then 1 else 0
+
+-- BDFフォントで描く、一列のみ対応
+export class SelectBoxRetro extends SelectBox
+	new: (texts, width , x, y, @title)=>
+		@w, @h = width or (math.max unpack [bdf1\getWidth(l) for l in *texts]) / 8 + 1, #texts*2
+		@x, @y = x or 30 - @w, y or 23 -  @h
+		super(SelectBox.buildButtons(texts, [{@x*8,@y*8+(j-1)*16,@w,16} for j, _ in ipairs texts]))
+		for b in *@buttons do b.text = '　'..b.text
+	attach: =>
+		super()
+		@index = 1
+	clickB: =>
+		@playClickSE()
+		@index = -1
+		@detach()
+	draw: =>
+		@_static_starttime or= love.timer.getTime()
+		gr.setScissor(@x*8-8, @y*8-16, @w*8+16, math.min((@h*8+32)*(love.timer.getTime()-@_static_starttime)*20, maid64.sizeY))
+		gr.draw_frame(@x, @y, @w, @h-1, @title) -- 外側からタイトルをつけられる。
+		gr.points bdf1\points(b.text, b.box[1], b.box[2]) for b in *@buttons
+		gr.points bdf1\points('●', unpack @buttons[@index].box)
+		gr.setScissor()
+
+
+export class MessageBoxRetro extends MessageBox
+	@X, @Y, @W, @H = 6, 24, 20, 6
+	new: (texts)=>
+		super({@@X*8, @@Y*8, @@W*8, @@H*8}, texts, bdf1)--, 16) --metatable消さないように
+		if issubclass(Scene.current.__class, Town) then play('assets/sounds/効果音ラボ/カーソル移動12.mp3') -- todo 本当は戦闘だけ消したい(トヘロスの効果がなくなったや竜王に話しかけるときは鳴らしたい)
+		@overlapping_color = {0,0,0,0} -- 演出につかう
+
+	draw: =>
+		gr.uipalette.retro1 =if g_player.hp / g_player.maxhp > 1/3 then gr.uipalette.base else {lume.color'#cc3333'} -- 本当はhpが増減する場所に書くべきだがFieldでの移動以外は分散しているのでここで
+		gr.draw_frame(@@X, @@Y, @@W, @@H)
+		setFont0, gr.setFont = gr.setFont, -> -- fontを一時的にbdfにするため
+		draw_text0, gr.draw_text = gr.draw_text, (text, x, y)-> gr.points(@font\points(text, x, y))
+		gr.setColor(gr.uipalette.retro1)
+		super()
+		gr.setFont, gr.draw_text = setFont0, draw_text0 -- 戻す
+		gr.rectangle(gr.setColor(@overlapping_color) or 'fill', 0, 0, maid64.sizeX, maid64.sizeY)
+
+	draw_gold: =>
+		X, Y, W, H = 3, 5, 6, 1
+		gr.draw_frame(X, Y, W, H, g_player.name)
+		gr.points bdf1\points(gr.setColor(gr.uipalette.retro1) or 'Ｇ'..'　'\rep(5-#tostring(g_player.gold))..toZenkaku(g_player.gold), X*8, Y*8)
+
+	draw_hpmp: =>
+		X, Y, W, H = 3, 5, 6, 3
+		gr.draw_frame(X, Y, W, H, g_player.name)
+		gr.points bdf1\points(gr.setColor(gr.uipalette.retro1) or 'ＨＰ'..'　'\rep(4-#tostring(g_player.hp))..toZenkaku(g_player.hp)..'\nＭＰ'..'　'\rep(4-#tostring(g_player.mp))..toZenkaku(g_player.mp), X*8, Y*8)
+
+
+
+export class Charactor -- NPCもモンスターもこれで表せるが、分けるべきか？
+	new: (x, y, chipids)=>
+		@x, @y, @direction, @chipids, @hp, @mp, @maxhp, @maxmp, @spells, @items, @gold, @経験値 = x, y, {0, -1}, chipids, 15, 0, 15, 0, {}, {}, 0, 0
+		@ちから, @素早さ, @武器, @鎧, @盾 = 4, 4, nil, nil, nil
+		@flags, @攻撃回避率, @ギラ系回避率, @ラリホー回避率, @マホトーン回避率 = {}, 1/64, 0/64, 3/8, 3/8
+
+	update: (_dt)=>
+	_update_randomwalk: (dt)=>
+		isblocked = (x, y)-> Scene.current.bg.data[y+1][x+1] >= 0x2c or (x==g_player.x and y==g_player.y) or lume.any(Scene.current.charactors, (c)-> c != @ and x == (c.tween?.target.x or c.x) and y == (c.tween?.target.y or c.y))
+		isintown = (x, y)-> pos_in_box({x, y}, {8,8,#Scene.current.bg.data[1]-16,#Scene.current.bg.data-16})
+		while true
+			_, dt = coroutine.yield() for _i=1,112 -- 合わせて120Framesで移動する
+			{x2, y2} = if issubclass(Scene.current.__class, Field) then lume.randomchoice([{@x+dx, @y+dy} for {dx, dy} in *{{-1,0},{0,-1},{1,0},{0,1},{0,0}} when isintown(@x+dx, @y+dy) and not isblocked(@x+dx, @y+dy)]) else {@x, @y}
+			@tween = tween.new(8/60, @, {x: x2, y: y2})
+			while not @tween\update(dt)
+				_, dt = coroutine.yield()
+			@tween = nil
+	-- talk: =>
+
+export LevelUps = {
+	{経験値: 0, ちから: 4, 素早さ: 4, maxhp: 15, maxmp: 0}
+	{経験値: 7, ちから: 5, 素早さ: 4, maxhp: 22, maxmp: 0}
+	{経験値: 23, ちから: 7, 素早さ: 6, maxhp: 24, maxmp: 5, 呪文: 'ホイミ'}
+	{経験値: 47, ちから: 7, 素早さ: 8, maxhp: 31, maxmp: 16, 呪文: 'ギラ'}
+	{経験値: 110, ちから: 12, 素早さ: 10, maxhp: 35, maxmp: 20}
+	{経験値: 220, ちから: 16, 素早さ: 10, maxhp: 38, maxmp: 24}
+	{経験値: 450, ちから: 18, 素早さ: 17, maxhp: 40, maxmp: 26, 呪文: 'ラリホー'}
+	{経験値: 800, ちから: 22, 素早さ: 20, maxhp: 46, maxmp: 29}
+	{経験値: 1300, ちから: 30, 素早さ: 22, maxhp: 50, maxmp: 36, 呪文: 'レミーラ'}
+	{経験値: 2000, ちから: 35, 素早さ: 31, maxhp: 54, maxmp: 40, 呪文: 'マホトーン'}
+	{経験値: 2900, ちから: 40, 素早さ: 35, maxhp: 62, maxmp: 50}
+	{経験値: 4000, ちから: 48, 素早さ: 40, maxhp: 63, maxmp: 58, 呪文: 'リレミト'}
+	{経験値: 5500, ちから: 52, 素早さ: 48, maxhp: 70, maxmp: 64, 呪文: 'ルーラ'}
+	{経験値: 7500, ちから: 60, 素早さ: 55, maxhp: 78, maxmp: 70}
+	{経験値: 10000, ちから: 68, 素早さ: 64, maxhp: 86, maxmp: 72, 呪文: 'トヘロス'}
+	{経験値: 13000, ちから: 72, 素早さ: 70, maxhp: 92, maxmp: 95}
+	{経験値: 17000, ちから: 72, 素早さ: 78, maxhp: 100, maxmp: 100, 呪文: 'ベホイミ'}
+	{経験値: 21000, ちから: 85, 素早さ: 84, maxhp: 115, maxmp: 108}
+	{経験値: 25000, ちから: 87, 素早さ: 86, maxhp: 130, maxmp: 115, 呪文: 'ベギラマ'}
+	{経験値: 29000, ちから: 92, 素早さ: 88, maxhp: 138, maxmp: 128}
+	{経験値: 33000, ちから: 95, 素早さ: 90, maxhp: 149, maxmp: 135}
+	{経験値: 37000, ちから: 97, 素早さ: 90, maxhp: 158, maxmp: 146}
+	{経験値: 41000, ちから: 99, 素早さ: 94, maxhp: 165, maxmp: 153}
+	{経験値: 45000, ちから: 103, 素早さ: 98, maxhp: 170, maxmp: 161}
+	{経験値: 49000, ちから: 113, 素早さ: 100, maxhp: 174, maxmp: 161}
+	{経験値: 53000, ちから: 117, 素早さ: 105, maxhp: 180, maxmp: 168}
+	{経験値: 57000, ちから: 125, 素早さ: 107, maxhp: 189, maxmp: 175}
+	{経験値: 61000, ちから: 130, 素早さ: 115, maxhp: 195, maxmp: 180}
+	{経験値: 65000, ちから: 135, 素早さ: 120, maxhp: 200, maxmp: 190}
+	{経験値: 65535, ちから: 140, 素早さ: 130, maxhp: 210, maxmp: 200} }
+
+武器一覧 = {
+	たけざお: 2 -- 攻撃力
+	こんぼう: 4
+	どうのつるぎ:10
+	てつのおの: 15
+	はがねのつるぎ: 20
+	ほのおのつるぎ: 28
+	ロトのつるぎ: 40 }
+
+鎧一覧 = {
+	ぬののふく: 2
+	かわのふく: 4
+	くさりかたびら: 10
+	てつのよろい: 16
+	はがねのよろい: 24
+	まほうのよろい: 24
+	ロトのよろい: 28
+}
+
+盾一覧 = {
+	かわのたて: 4
+	てつのたて: 10
+	みかがみのたて: 20
+}
+
+呪文一覧 = {
+	ホイミ: {mp: 3, lv: 3,  gen_messages: (subject, _, level--[[ = 'ホイミ']])-> ->
+		␣ = if subject == g_player then '' else '　'
+		coroutine.yield 1, L('%s%sは　%sをとなえた！')\format(␣, subject.name, level)
+		play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		n = math.min(rawget({ホイミ: (-> math.random(10, 17)), ベホイミ: (-> math.random(85, 100))}, level)(), subject.maxhp - subject.hp)
+		subject.mp -= 呪文一覧[level].mp
+		subject.hp += n
+		coroutine.yield 1, L('\n%s%sはＨＰが%sかいふくした！🔻')\format(␣, subject.name, toZenkaku(n))
+		nil
+	}
+	ギラ: {mp: 2, lv: 4, gen_messages: (subject, other, level--[[ = 'ギラ']])-> -> --敵 16～20ダメージ（敵の使用時は8～12ダメージ）
+		␣ = if subject == g_player then '' else '　'
+		if level == 'ギラ' or level == 'ベギラマ'
+			coroutine.yield 1, L('%s%sは　%sをとなえた！')\format(␣, subject.name, level)
+			play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		else
+			coroutine.yield 1, L('%s%sは　%sをはいた！')\format(␣, subject.name, level)
+			play_wait'assets/supermario/クッパの炎.ogg'
+		n = rawget({ギラ: (-> math.random(5, 12)), ベギラマ: (-> math.random(58, 65)), ほのお: (-> math.random(16, 23)), かえんのいぶき: (-> math.random(65, 70))}, level)()
+		if other.鎧 and other.鎧 == 'ロトのよろい' or other.鎧 and other.鎧 == 'まほうのよろい' then n = math.floor(n*2/3)
+		subject.mp -= 呪文一覧[level].mp
+		if math.random() < other.ギラ系回避率
+			if subject == g_player then coroutine.yield 1, L('\nミス！\n%sに　ダメージをあたえられない！')\format(other.name)
+			else coroutine.yield 1, L('\nミス！\n%s%sは　ダメージをうけない！')\format(␣, other.name)
+		else
+			other.hp -= n
+			if subject == g_player then coroutine.yield 1, L('\n%sに　%sポイントの\nダメージをあたえた！')\format(other.name, toZenkaku(n))
+			else coroutine.yield 1, L('\n%s%sは　%sポイントの\n%sダメージをうけた！')\format(␣, other.name, toZenkaku(n), ␣)
+		nil
+	}
+	ラリホー: {mp: 2, lv: 7, gen_messages: (subject, other)-> ->
+		␣ = if subject == g_player then '' else '　'
+		coroutine.yield 1, L('%s%sは　%sをとなえた！')\format(␣, subject.name, 'ラリホー')
+		play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		if math.random() < other.ラリホー回避率
+			coroutine.yield 1, L('\n%s%sには　きかなかった！')\format(␣, other.name)
+		else
+			other.flags[] = L'眠り'
+			if subject == g_player then coroutine.yield 1, L('\n%sを　ねむらせた！')\format(other.name)
+			else coroutine.yield 1, L('\n　%sは　ねむってしまった！')\format(other.name)
+		nil
+	}
+	レミーラ: {mp: 2, lv: 9, gen_messages: (subject)-> -> -- ダンジョン内を一定時間明るくする
+		coroutine.yield 1, L('%sは　%sをとなえた！')\format(subject.name, L'レミーラ')
+		subject.mp -= 2
+		play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		g_player.レミーラcount = 128
+		nil
+	}
+	マホトーン: {mp: 2, lv: 10, gen_messages: (subject, other)-> -> -- 呪文を封じる
+		␣ = if subject == g_player then '' else '　'
+		coroutine.yield 1, L('%s%sは　%sをとなえた！')\format(␣, subject.name, L'マホトーン')
+		subject.mp -= 2
+		play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		if math.random() < other.マホトーン回避率 or (other.鎧 and other.鎧 == L'ロトのよろい')
+			coroutine.yield 1, L('\n%s%sには　きかなかった！')\format(␣, other.name)
+		else
+			other.flags[] = L'呪文封じ'
+			if subject == g_player then coroutine.yield 1, L('\n%sの　じゅもんをふうじた！')\format(other.name)
+			else coroutine.yield 1, L('\n　%sは　じゅもんをふうじられた！')\format(other.name)
+		nil
+	}
+	リレミト: {mp: 6, lv: 12, gen_messages: (subject)-> -> -- ダンジョンから脱出
+		coroutine.yield 1, L('%sは　%sをとなえた！')\format(subject.name, L'リレミト')
+		subject.mp -= 6
+		play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		Scene.current\detach()
+		Scene.current.リレミト()
+		nil
+	}
+	ルーラ: {mp: 8, lv: 13, gen_messages: (subject)-> -> --ラダトームの城へ戻る（ダンジョン内では無効）
+		coroutine.yield 1, L('%sは　%sをとなえた！')\format(subject.name, L'ルーラ')
+		subject.mp -= 8
+		play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		Scene.current\detach()
+		Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_fromルーラ()
+		nil
+	}
+	トヘロス: {mp: 2, lv: 15 , gen_messages: (subject)-> -> -- 自分より弱い敵の出現率低下（ダンジョン内では無効）
+		coroutine.yield 1, L('%sは　%sをとなえた！')\format(subject.name, L'トヘロス')
+		subject.mp -= 2
+		play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		g_player.トヘロスcount = 128
+		nil
+	}
+	ベホイミ: {mp: 8, lv: 17} 	--自分 	HPを85～100回復
+	ベギラマ: {mp: 5, lv: 19} 	--敵 	50～65ダメージ（敵の使用時は約40ダメージ）
+	ほのお: {mp: 0}
+	かえんのいぶき: {mp: 0}
+}
+呪文一覧.ベホイミ.gen_messages = (subject, _)-> 呪文一覧.ホイミ.gen_messages(subject, _, L'ベホイミ')
+呪文一覧.ベギラマ.gen_messages = (subject, other)-> 呪文一覧.ギラ.gen_messages(subject, other, L'ベギラマ')
+呪文一覧.ほのお.gen_messages = (subject, other)-> 呪文一覧.ギラ.gen_messages(subject, other, L'ほのお')
+呪文一覧.かえんのいぶき.gen_messages = (subject, other)-> 呪文一覧.ギラ.gen_messages(subject, other, L'かえんのいぶき')
+
+道具一覧 = {
+	やくそう: { gen_messages: -> ->
+		coroutine.yield 1, L('%sは　%sをつかった！🔻')\format(g_player.name, L'やくそう')
+		lume.remove(g_player.items, L'やくそう')
+		n = math.min(23 + math.random(0, 7), g_player.maxhp - g_player.hp)
+		g_player.hp += n
+		coroutine.yield 1, L('\n%sはＨＰが%sかいふくした！🔻')\format(g_player.name, toZenkaku(n))
+		nil
+	}
+	かぎ: { gen_messages: -> ->
+		coroutine.yield 1, L'ここには　とびらがない。🔻'
+		nil
+	}
+	たいまつ: { gen_messages: => ->
+		coroutine.yield 1, L('%sは　たいまつをともした！🔻')\format(g_player.name)
+		lume.remove(g_player.items, L'たいまつ')
+		g_player.たいまつ = true
+		nil
+	}
+	せいすい: { gen_messages: -> ->
+		coroutine.yield 1, L('%sは　%sをからだにふりまいた！')\format(g_player.name, L'せいすい')
+		lume.remove(g_player.items, L'せいすい')
+		play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		g_player.せいすいcount = 127
+		nil
+	}
+	キメラのつばさ: { gen_messages: -> ->
+		coroutine.yield 1, L('%sは　%sをつかった！')\format(g_player.name, L'キメラのつばさ')
+		play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		Scene.current\detach()
+		Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_fromルーラ()
+		nil
+	}
+	りゅうのうろこ: { -- 守備力ってパラメーターがない
+	}
+	せんしのゆびわ: { -- ならこれは攻撃力？
+	}
+	ようせいのふえ: {gen_messages: (subject, other)-> ->
+		coroutine.yield 1, L('%sは　%sをふいた！')\format(subject.name, L'ようせいのふえ')
+		BGM()
+		play_wait'assets/sounds/mml2ogg/ようせいのふえ.ogg'
+		BGM({'assets/sounds/mml2ogg/battle.ogg'})
+		if math.random() < 1/16 or other.name != L'ゴーレム'
+			coroutine.yield 1, L('\n%sには　きかなかった！')\format(other.name)
+		else
+			other.flags[] = L'眠り'
+			coroutine.yield 1, L('\n%sは　しずかに　めをとじる…')\format(other.name)
+			coroutine.yield 1, L('\n%sを　ねむらせた！')\format(other.name)
+		nil
+	}
+	のろいのベルト: { gen_messages: (subject, _)-> ->
+		coroutine.yield 1, L('%sは　%sをみにつけた！')\format(subject.name, L'のろいのベルト')
+		coroutine.yield 1, L('\n%sは　のろわれてしまった！🔻')\format(subject.name)
+		g_player.flags[] = L'呪い'
+		lume.remove(g_player.items, L'のろいのベルト') -- つかうと道具箱から消えることにする
+		nil
+	}
+	しのくびかざり: { gen_messages: (subject, _)-> ->
+		coroutine.yield 1, L('%sは　%sをみにつけた！')\format(subject.name, L'しのくびかざり')
+		coroutine.yield 1, L('\n%sは　のろわれてしまった！🔻')\format(subject.name)
+		g_player.flags[] = L'呪い'
+		lume.remove(g_player.items, L'しのくびかざり') -- つかうと道具箱から消えることにする
+		nil
+	}
+	ぎんのたてごと: { gen_messages: (subject, _)-> ->
+		coroutine.yield 1, L('%sは　%sを　かなでた！')\format(subject.name, L'ぎんのたてごと')
+		BGM()
+		play_wait'assets/sounds/mml2ogg/ぎんのたてごと.ogg'
+		BGM Scene.current.parent.__class.BGM
+		if not Scene.current.parent.ぎんのたてごと
+			coroutine.yield 1, L'\nしかし、なにも　おきなかった！🔻'
+		else
+			Scene.current.detach = =>
+				MessageBoxRetro.__base.detach(Scene.current) -- super()
+				Scene.current\ぎんのたてごと()
+		nil
+	}
+	おうじょのあい: { gen_messages: (subject, _)-> ->
+		coroutine.yield 1, L'ローラひめの　こえが　きこえる。🔻'
+		if LevelUps[g_player.level+1]
+			coroutine.yield 1, L('\nローラ「あたなが　レベルをあげるには\n　　　　あと%sポイント\n　　　　けいけんちが　ひつようです。🔻')\format(toZenkaku(LevelUps[g_player.level+1].経験値 - g_player.経験値))
+		if Scene.current.parent.__class == Field
+			dx, dy =  g_player.x - 54, g_player.y - 49
+			coroutine.yield 1, L('\nローラ「わたしのいる　おしろは\n　　　　%sに%s　%sに%s\n　　　　の　ほうこう　です。🔻')\format((if dy < 0 then 'みなみ' else 'きた'), toZenkaku(math.abs(dy)), (if dx < 0 then 'ひがし' else 'にし'), toZenkaku(math.abs(dx)), )
+		coroutine.yield 1, L('\nローラ「%sさまを　ローラは\n　　　　おしたい　もうしております。🔻')\format(g_player.name)
+		nil
+	}
+	ロトのしるし: { gen_messages: (subject, _)-> ->
+		coroutine.yield 1, L('%sは　%sをにぎりしめた。🔻')\format(subject.name, L'ロトのしるし')
+		coroutine.yield 1, L'\nしかし、なにも　おきなかった！🔻'
+		nil
+	}
+	たいようのいし: { gen_messages: (subject, _)-> ->
+		coroutine.yield 1, L('%sは　%sをてんにかざした。🔻')\format(subject.name, L'たいようのいし')
+		coroutine.yield 1, L'\nしかし、なにも　おきなかった！🔻'
+		nil
+	}
+	あまぐものつえ: { gen_messages: (subject, _)-> ->
+		coroutine.yield 1, L('%sは　%sをてんにかざした。🔻')\format(subject.name, L'あまぐものつえ')
+		coroutine.yield 1, L'\nしかし、なにも　おきなかった！🔻'
+		nil
+	}
+	にじのしずく: { gen_messages: (subject, _)-> ->
+		if g_player.x == 77 and g_player.y == 56
+			coroutine.yield 1, L('%sは　にじのしずくを　てんにかざした。🔻')\format(subject.name)
+			g_player.flags[] = L'にじのしずくをつかった'
+			lume.remove(g_player.items, L'にじのしずく')
+			BGM()
+			s = play'assets/sounds/mml2ogg/にじのしずく.ogg'
+			hue = love.timer.getTime()
+			Scene.current.overlapping_color = {1,1,1,0.6}
+			while s\isPlaying()
+				Scene.current.overlapping_color = {hsv (love.timer.getTime() - hue)*3.2 % 6 , 1, 1, lume.smooth(0, 0.6, 1 - s\tell() / s\getDuration())}
+				coroutine.yield 1
+			Scene.current.overlapping_color = {0,0,0,0}
+			BGM'assets/sounds/mml2ogg/overworld.ogg'
+			Scene.current.parent.bg.data[57][77] = 0x29
+			Scene.current.parent.bg\set(Scene.current.parent.bg.data)
+		else
+			coroutine.yield 1, L'ここでは　つかえない。🔻'
+		nil
+	}
+}
+
+
+export 宿屋 = class 宿屋 extends Charactor
+	new: (x, y, @fee)=> super(x, y, {0x3e, 0x3f})
+	talk: => @@.MessageBox(@fee)\attach()
+
+class 宿屋.MessageBox extends MessageBoxRetro
+	new: (price)=>
+		sb = SelectBoxRetro({L'はい', L'いいえ'})
+		super({ <index>: coroutine.wrap((_, _)-> -- selfとnだけどselfを覆わないようにする
+			coroutine.yield 1, L('＊「たびびとの　やどやへ　ようこそ。\n　　ひとばん　%sＧですが\n　　おとまりに　なりますか？')\format(toZenkaku(price))
+			coroutine.yield 1, sb\attach()
+			if sb.index == 1
+				if g_player.gold >= price
+					coroutine.yield 1, L'\n＊「では　おやすみなさいませ。'
+					g_player.gold -= price
+					@update = coroutine.wrap(@_update) -- メッセージボックスのクリア
+					BGM()
+					s = play $mml2ogg([[ Tempo(114) @8 q100 o5 l8 '>d<f+' '>c+<f' '>c<e' 'bd' 'ac',50 'd<f+>',50 '>d<f+'4 ]])
+					@overlapping_color = {0,0,0,1}
+					while s\isPlaying()
+						@overlapping_color[4] = lume.smooth(0, 1, 1 - s\tell() / s\getDuration())
+						coroutine.yield 1
+					@overlapping_color = {0,0,0,0}
+					BGM'assets/sounds/mml2ogg/town.ogg'
+					if not lume.find(g_player.flags, L'ローラ姫を救出した')
+						coroutine.yield 1, L'＊「おはようございます。\n　　ゆうべは　よく　おやすみ\n　　でしたね。🔻'
+					else
+						coroutine.yield 1, L'＊「おはようございます。\n　　ゆうべは　おたのしみ　でしたね。🔻'
+					coroutine.yield 1, L'\n＊「では　また　どうぞ。🔻'
+				else coroutine.yield 1, L'\n＊「すみません　おかねが\n　　たりないようです。'
+			else coroutine.yield 1, L'\n＊「さようなら　たびのひと。あまり\n　　むりを　なさいませぬように。🔻'
+			nil
+		)})
+	draw: =>
+		super()
+		@draw_gold()
+
+export 武器屋 = class 武器屋 extends Charactor
+	new: (x, y, @goods)=> super(x, y, {0x3e, 0x3f})
+	talk: => @@.MessageBox(@goods)\attach()
+
+class 武器屋.MessageBox extends MessageBoxRetro
+	new: (goods)=> -- {{L'たけざお', 10}, {L'こんぼう', 60}, {L'どうのつるぎ', 180}, {L'ぬののふく', 20}, {L'かわのふく', 70}, {L'かわのたて', 90} }
+		super({ <index>: coroutine.wrap((_, _)->
+			sb1 = SelectBoxRetro({L'はい', L'いいえ'})
+			sb2 = SelectBoxRetro([name..'　'\rep(7-utf8.len(name))..'　'\rep(5-#tostring(price))..toZenkaku(price) for {name, price} in *goods]) -- bdf1.getWidthを使うと濁点の分離に対応できるがbdf1が来てない
+			coroutine.yield 1, L'＊「ここは　ぶきとよろいの　みせだ。\n　　なにか　かうかね？'
+			while true
+				sb1.index = 1
+				coroutine.yield 1, sb1\attach()
+				if sb1.index == 1
+					coroutine.yield 1, L'\n＊「なにを　かうかね？'
+					sb2.index = 1
+					coroutine.yield 1, sb2\attach()
+					if sb2.index >= 1
+						coroutine.yield 1, L('\n＊「%sだね。')\format(toZenkaku(goods[sb2.index][1]))
+						sb1.index = 1
+						coroutine.yield 1, sb1\attach()
+						if sb1.index == 1
+							if g_player.gold >= goods[sb2.index][2]
+								coroutine.yield 1, L'\n＊「どうもありがとう。'
+								item = goods[sb2.index][1]
+								if item in lume.keys(武器一覧)
+									if g_player.武器 then g_player.items[] = g_player.武器
+									g_player.武器 = item
+								elseif item in lume.keys(鎧一覧)
+									if g_player.鎧 then g_player.items[] = g_player.鎧
+									g_player.鎧 = item
+								elseif item in lume.keys(盾一覧)
+									if g_player.盾 then g_player.items[] = g_player.盾
+									g_player.盾 = item
+								g_player.gold -= goods[sb2.index][2]
+								n = (if g_player.武器 then 1 else 0) + (if g_player.盾 then 2 else 0) -- 勇者のスプライト変更
+								g_player.chipids = {0x20+n*2, 0x20+n*2+1}
+							else coroutine.yield 1, L'\n＊「すまないが　おかねが\n　　たりないようだ。'
+					coroutine.yield 1, L'\n＊「ほかに　なにか　かうかね？'
+				else break
+			coroutine.yield 1, L'\n＊「またきてくれよな。🔻'
+			nil
+		)})
+	draw: =>
+		super()
+		@draw_gold()
+
+export 道具屋 = class 道具屋 extends Charactor
+	new: (x, y, @goods)=> super(x, y, {0x3e, 0x3f}) -- 商人
+	talk: => @@.MessageBox(@goods)\attach()
+
+class 道具屋.MessageBox extends MessageBoxRetro
+	@売値: {やくそう: 12, かぎ: 26, たいまつ: 4, せいすい: 19, キメラのつばさ: 35, りゅうのうろこ: 10, せんしのゆびわ: 15, のろいのベルト: 180, しのくびかざり: 1200
+		たけざお: 10, こんぼう: 30, どうのつるぎ: 90, てつのおの: 280, はがねのつるぎ: 750, ほのおのつるぎ: 4900, ロトのつるぎ: 1
+		ぬののふく: 10, かわのふく: 35, くさりかたびら: 150, てつのよろい: 500, はがねのよろい: 1500, まほうのよろい: 3850, ロトのよろい: 1
+		かわのたて: 45, てつのたて: 800, みかがみのたて: 7400}
+	new: (goods)=>
+		super({ <index>: coroutine.wrap((_, _)->
+			sb0 = SelectBoxRetro({L'かいにきた', L'うりにきた'})
+			sb1 = SelectBoxRetro({L'はい', L'いいえ'})
+			sb2 = SelectBoxRetro([name..'　'\rep(7-utf8.len(name))..'　'\rep(5-#tostring(price))..toZenkaku(price) for {name, price} in *goods]) -- bdf1.getWidthを使うと濁点の分離に対応できるがbdf1が来てない
+			coroutine.yield 1, L'＊「いらっしゃいませ。\n　　ここは　どうぐや　です。\n　　どんな　ごようでしょうか？'
+			coroutine.yield 1, sb0\attach()
+			switch sb0.index
+				when 1 -- かいにきた
+					while true
+						coroutine.yield 1, L'\n＊「どれを　おもとめですか？'
+						sb2.index = 1
+						coroutine.yield 1, sb2\attach()
+						if sb2.index >= 1
+							coroutine.yield 1, L('\n＊「%sですね？')\format(toZenkaku(goods[sb2.index][1]))
+							sb1.index = 1
+							coroutine.yield 1, sb1\attach()
+							if sb1.index == 1
+								if g_player.gold >= goods[sb2.index][2]
+									coroutine.yield 1, L'\n＊「まいど　ありがとうございます。'
+									g_player.items[] = goods[sb2.index][1]
+									g_player.gold -= goods[sb2.index][2]
+								else coroutine.yield 1, L'\n＊『おかねが　たりませんが。'
+						coroutine.yield 1, L'\n＊「ほかに　なにか　かわれますか？'
+						sb1.index = 1
+						coroutine.yield 1, sb1\attach()
+						if sb1.index != 1 then break
+				when 2 -- うりにきた
+					while true
+						coroutine.yield 1, L'\n＊「どれを　おうりでしょう？'
+						items = [i for i in *g_player.items when lume.find(lume.keys(@@売値), i)]
+						sb3 = with SelectBoxRetro(lume.unique_(items), 12) -- 複数持ちはまとめる
+							for b in *.buttons do b.text ..= '　'\rep(12-utf8.len(b.text)-#tostring(@@売値[b.id]))..toZenkaku(@@売値[b.id])
+						coroutine.yield 1, sb3\attach()
+						if sb3.index >= 1
+							name = sb3.buttons[sb3.index].id
+							coroutine.yield 1, L('\n　　%sでございますね。\n　　それなら　%sゴールドで\n　　かいましょう。いいですか？')\format(toZenkaku(name), toZenkaku(@@売値[name]))
+							sb1.index = 1
+							coroutine.yield 1, sb1\attach()
+							if sb1.index == 1
+								lume.remove(g_player.items, name)
+								g_player.gold += @@売値[name]
+						coroutine.yield 1, L'\n＊「まだ　なにか　うってくれますか？'
+						sb1.index = 1
+						coroutine.yield 1, sb1\attach()
+						if sb1.index != 1 then break
+				-- else break
+			coroutine.yield 1, L'\n＊「では　またの　おこしを\n　　おまち　しております。🔻'
+			nil
+		)})
+	draw: =>
+		super()
+		@draw_gold()
+
+export かぎ屋 = class かぎ屋 extends Charactor
+	new: (x, y, @price)=> super(x, y, {0x3a, 0x3b}) -- 老人
+	talk: => @@.MessageBox(@price)\attach()
+
+class かぎ屋.MessageBox extends MessageBoxRetro
+	new: (price)=>
+		sb1 = SelectBoxRetro({L'はい', L'いいえ'})
+		super({ <index>: coroutine.wrap((_, _)->
+			coroutine.yield 1, L('＊「どんなとびらも　あけてしまう\n　　まほうの　かぎは　いらんかな？\n　　ひとつ　%sゴールドでどうじゃ？')\format(toZenkaku(price))
+			coroutine.yield 1, sb1\attach()
+			while sb1.index == 1
+				if lume.count(g_player.items, L'かぎ') >= 6
+					coroutine.yield 1, L'\n＊「わるいが　これいじょう\n　　うるわけには　いかんな。🔻'
+					break
+				elseif g_player.gold >= price
+					g_player.gold -= price
+					g_player.items[] = 'かぎ'
+					coroutine.yield 1, L'\n＊「ほれ。かぎをひとつ　わたそう。\n＊「まだ　かぎを　かうかな？'
+					coroutine.yield 1, sb1\attach()
+				else
+					coroutine.yield 1, L'\n＊「おまえさまは　おかねが\n　　たらないようじゃな。🔻'
+					break
+			coroutine.yield 1, L'\n＊「では　またな。🔻'
+			nil
+		)})
+	draw: =>
+		super()
+		@draw_gold()
+
+export せいすい屋 = class せいすい屋 extends Charactor
+	new: (x, y, @price)=> super(x, y, {0x3c, 0x3d}) -- 女性
+	talk: => @@.MessageBox(@price)\attach()
+
+class せいすい屋.MessageBox extends MessageBoxRetro
+	new: (price)=>
+		sb1 = SelectBoxRetro({L'はい', L'いいえ'})
+		super({ <index>: coroutine.wrap((_, _)->
+			coroutine.yield 1, L('＊「まものよけの　せいすいは\n　　いかがでしょう？\n　　ひとびん　%sゴールドですが。')\format(toZenkaku(price))
+			coroutine.yield 1, sb1\attach()
+			while sb1.index == 1
+				if g_player.gold >= price
+					g_player.gold -= price
+					g_player.items[] = 'せいすい'
+					coroutine.yield 1, L'\n＊「ありがとうごさいます。\n＊「もうひとびん\n　　かわれますか？'
+					coroutine.yield 1, sb1\attach()
+				else
+					coroutine.yield 1, L'\n＊「おかねが　たりませんが。🔻'
+					break
+			coroutine.yield 1, L'\n＊「あなたに　かみの　ごかごが\n　　ありますように。🔻'
+			nil
+		)})
+	draw: =>
+		super()
+		@draw_gold()
+
+export 宝箱 = class 宝箱 extends Charactor
+	new: (x, y, @gold_or_item)=> super(x, y, {0x10})
+	talk: =>
+		lume.remove(Scene.current.charactors, @)
+		play'assets/DQ1/宝箱.ogg'
+		if type(@gold_or_item) == 'number'
+			g_player.gold += @gold_or_item
+			MessageBoxRetro({ L('%sは　%sゴールドを\nてにいれた。🔻')\format(g_player.name, toZenkaku(@gold_or_item)) })\attach()
+		else
+			MessageBoxRetro({ L('%sは　%sを\nてにいれた。🔻')\format(g_player.name, @gold_or_item) })\attach()
+			if lume.find(武器一覧, @gold_or_item) then g_player.武器, @gold_or_item = @gold_or_item, g_player.武器
+			if lume.find(鎧一覧, @gold_or_item) then g_player.鎧, @gold_or_item = @gold_or_item, g_player.鎧
+			if lume.find(盾一覧, @gold_or_item) then g_player.盾, @gold_or_item = @gold_or_item, g_player.盾
+			g_player.items[] = @gold_or_item
+
+export 扉 = class 扉 extends Charactor
+	new: (x, y, @name)=>
+		if not lume.find(g_player.flags, @name) then super(x, y, {0x11})
+		else
+			super(0,0,{0x20})
+			@talk = lume.noop
+	talk: =>
+		if not lume.find(g_player.items, L'かぎ') then return MessageBoxRetro({L'かぎが　ひつようなようだ。🔻'})\attach()
+		play'assets/DQ1/扉.ogg'
+		lume.remove(g_player.items, L'かぎ')
+		lume.remove(Scene.current.charactors, @)
+		g_player.flags[] = @name
+
+
+export class Battle extends MessageBoxRetro
+	new: (@monster)=>
+		@offset = {0, 0}
+		@AutoA = true
+		@effect_basecolor = {1,1,1}
+		super({ <index>: coroutine.wrap((_, _)->
+			敵の攻撃 = ->
+				if L'眠り' in @monster.flags and math.random() < 1/3 then coroutine.yield 1, L('\n　%sはめをさました！')\format(@monster.name), lume.remove(@monster.flags, L'眠り') -- 本当は眠らされた次のターンから一定確率で起きる
+				if L'眠り' in @monster.flags then coroutine.yield 1, L('\n　%sは　ねむっている！')\format(@monster.name)
+				else
+					if g_player.ちから / 2 >= @monster.攻撃力 and (L'眠り' in g_player.flags or math.random() < 1/4)
+						coroutine.yield 1, L('\n　%sは　にげだした！')\format(@monster.name)
+						@detach(BGM(@parent.__class.BGM))
+					strategy = lume.weightedchoice(if lume.find(@monster.flags, L'呪文封じ') then lume.pick(@monster.strategy, L'たたかう', L'ほのお', L'かえんのいぶき') else @monster.strategy) -- 呪文がふうじられているときはその選択肢を取らないことにする。
+					coroutine.yield 1, L'\n'
+					if strategy in lume.keys(呪文一覧)
+						呪文一覧[strategy].gen_messages(@monster, g_player, strategy)()
+					else
+						coroutine.yield 1, L('　%sの　こうげき！')\format(@monster.name)
+						play'assets/sounds/mml2ogg/こうげき.ogg'
+						n = math.floor((@monster.攻撃力 - g_player\守備力()/2) * lume.random(0.25, 0.5))--(0.8, 1.0))
+						if n <= 0 or math.random() < g_player.攻撃回避率
+							coroutine.yield 1, L'\n　ミス！\nダメージをうけない！' -- todo: ミスの音！
+						else
+							for p in *{--[[{-4, -4}, {4, 4}, {4, -3}, {-3, 4}, ]]{-3, -3}, {2, 3}, {2, -3}, {-3, 2}, {-2, -2}, {2, 1}, {1, -2}, {-1, 1}, {-1, -1}, {0, 0}}
+								@offset = p
+								coroutine.yield 1
+							g_player.hp -= n
+							coroutine.yield 1, L('\n　%sは%sポイントの\n　ダメージをうけた！')\format(g_player.name, toZenkaku(n))
+					if g_player.hp <= 0
+						@AutoA = false
+						coroutine.yield 1, L('\n%sはしんでしまった！🔻')\format(g_player.name)
+						lume.remove(g_player.flags, L'眠り')
+						lume.remove(g_player.flags, L'呪文封じ')
+						Scene.current\detach()
+						Scene.current\blackout -> Scene.current = require('DQ1_玉座').build_死に戻り()
+			BGM({'assets/sounds/mml2ogg/エンカウント.ogg', @monster.BGM or 'assets/sounds/mml2ogg/battle.ogg'})
+			command = @@.Command()
+			coroutine.yield 1, if not @monster.BGM then L('%sが　あらわれた！')\format(@monster.name) else L'りゅうおうは　しょうたいをあらわした！'
+			if g_player.ちから / 2 >= @monster.攻撃力 and math.random() < 1/4
+				coroutine.yield 1, L('\n　%sは　にげだした！')\format(@monster.name)
+				@detach(BGM(@parent.__class.BGM))
+			if math.random() < @monster.守備力 / (@monster.守備力 + g_player.素早さ * 4) -- こちらの先制攻撃はDQ1にはないそうだ
+				coroutine.yield 1, L('\n　%sが　みがまえるより　はやく\n　%sは　おそいかかってきた！')\format(g_player.name, @monster.name)
+				敵の攻撃()
+			while true
+				if L'眠り' in g_player.flags and math.random() < 1/3 then coroutine.yield 1, L('\n%sは　めをさました！')\format(g_player.name), lume.remove(g_player.flags, L'眠り')
+				if L'眠り' in g_player.flags then coroutine.yield 1, L('\n%sは　ねむっている！')\format(g_player.name)
+				else
+					coroutine.yield 1, L'\nコマンド？'
+					coroutine.yield 1, command\attach()
+					switch command.index
+						when 1 -- たたかう
+							coroutine.yield 1, L('\n%sのこうげき！')\format(g_player.name)
+							n = math.floor((g_player\攻撃力() - @monster.守備力/2) * lume.random(0.25, 0.5))--(0.8, 1.0))
+							攻撃音 = 'assets/sounds/mml2ogg/こうげき.ogg'
+							if math.random() < 1/32 and @monster.name != 'りゅうおう' -- or 'りゅうおう(竜)' ではかいしんのいちげきは起きない
+								coroutine.yield 1, L'\nかいしんのいちげき！'
+								n = math.floor(g_player\攻撃力() * lume.random(0.5, 1.01))--(0.8, 1.01))
+								攻撃音 = 'assets/DQ1/かいしんのいちげき.ogg'
+							if n <= 0 or math.random() < @monster.攻撃回避率
+								coroutine.yield 1, L'\nミス！\nダメージをあたえられない！' -- ミスの音！
+							else
+								@monster.hp -=n
+								s = play 攻撃音
+								for c in *{{1,.5,.5}, {1,.1,.5}, {1,.5,.1}, {.5,.5,.5}, {1,.1,.5}, {1,.5,.1}, {1,1,1}, } do
+									@effect_basecolor = c
+									coroutine.yield 1
+								while s\isPlaying() do coroutine.yield 1
+								coroutine.yield 1, L('\n%sに　%sポイントの\nダメージをあたえた！')\format(@monster.name, toZenkaku(n))
+						when 3 -- にげる
+							play'assets/DQ1/階段.ogg'
+							coroutine.yield 1, L('\n%sは　にげだした！')\format(g_player.name)
+							if g_player.素早さ*lume.random() >= @monster.守備力*lume.random(0,0.25) or L'眠り' in @monster.flags then @detach(BGM(@parent.__class.BGM))
+							else coroutine.yield 1, L'\nしかし　まわりこまれてしまった！'
+						when 2 -- じゅもん
+							if L'呪文封じ' in g_player.flags
+								coroutine.yield 1, L('%sの　じゅもんはふうじられている。🔻')\format(g_player.name)
+								continue
+							if 0 == #g_player.spells
+								coroutine.yield 1, L('%sは　まだ　じゅもんをつかえない。🔻')\format(g_player.name)
+								continue
+							if not command.sb
+								coroutine.yield 1, L'\nＭＰがたりない！🔻'
+								continue
+							elseif command.sb.index <= 0 then continue
+							else
+								coroutine.yield 1, '\n'
+								id = command.sb.buttons[command.sb.index].id
+								呪文一覧[id].gen_messages(g_player, @monster, id)()
+						when 4 -- どうぐ
+							if not command.sb
+								coroutine.yield 1, L'つかえる　どうぐを　もっていない！🔻'
+								continue
+							elseif command.sb.index <= 0 then continue
+							else
+								coroutine.yield 1, '\n'
+								id = command.sb.buttons[command.sb.index].id
+								道具一覧[id].gen_messages(g_player, @monster, id)()
+						else continue
+					if @monster.hp <= 0 then break
+				敵の攻撃()
+			@monster.img = gr.newFlyweightImage() -- 透明に差し替え
+			@AutoA = nil
+			-- BGM({'assets/sounds/mml2ogg/勝利.ogg', @parent.__class.BGM})
+			lume.remove(g_player.flags, L'呪文封じ')
+			g_player.経験値 += @monster.経験値
+			g_player.gold += @monster.gold
+			if not @monster.BGM
+				BGM({'assets/sounds/mml2ogg/勝利.ogg', @parent.__class.BGM})
+				coroutine.yield 1, L('\n%sを　たおした！\nけいけんちを　%sポイントかくとく\n%sゴールドをてにいれた！🔻')\format(@monster.name, toZenkaku(@monster.経験値), toZenkaku(@monster.gold))
+			else
+				BGM()
+				play_wait'assets/sounds/mml2ogg/勝利.ogg'
+				coroutine.yield 1, L('\n%sを　たおした！🔻')\format(@monster.name)
+				coroutine.yield 1, L('\nそして　ひかりのたまを\nりゅうおうから　とりもどした！🔻')
+				coroutine.yield 1, L('\nあなたが　ひかりのたまを　かざすと\nまばゆいばかりの　ひかりが\nあふれだす……🔻')
+				coroutine.yield 1, L('\nこのくにに　へいわが　もどったのだ。🔻')
+				g_player.items[] = L'ひかりのたま'
+				coroutine.yield 1, Scene.current.parent\blackout -> Scene.current = require('DQ1_全体マップ').build_atりゅうおうの城
+			t = LevelUps[g_player.level+1]
+			if t and g_player.経験値 >= t.経験値
+				play_wait 'assets/sounds/mml2ogg/レベルアップ.ogg'
+				g_player.level += 1
+				coroutine.yield 1, L('\n%sは　レベルが　あがった！🔻')\format(g_player.name)
+				coroutine.yield 1, L('\nちからが%sあがった！\nすばやさが%sあがった！\nさいだいＨＰが%sあがった！\nさいだいＭＰが%sあがった！')\format(toZenkaku(t.ちから - g_player.ちから), toZenkaku(t.素早さ - g_player.素早さ), toZenkaku(t.maxhp - g_player.maxhp), toZenkaku(t.maxmp - g_player.maxmp) )
+				if t.呪文 then coroutine.yield 1, L('\n%sをおぼえた！')\format(t.呪文)
+				g_player.ちから, g_player.素早さ, g_player.maxhp, g_player.maxmp, g_player.spells = t.ちから, t.素早さ, t.maxhp, t.maxmp, lume.concat(g_player.spells, {t.呪文})
+				coroutine.yield 1, '🔻'
+			nil
+		)})
+
+	predrawback: => gr.translate(@offset[1], @offset[2]) -- 揺らす用
+	draw: =>
+		gr.rectangle(gr.setColor(gr.uipalette.text) or 'fill', 64, 64, 128, 128)
+		gr.rectangle(gr.setColor(gr.uipalette.retro1) or 'line', 64, 64, 128, 128)
+		super()
+		@draw_hpmp()
+		-- if Scene.current.__class == SelectBoxRetro then @command\draw()
+		w, h = @monster.img\getDimensions()
+		gr.draw(gr.setColor(@effect_basecolor) or @monster.img, 64+idiv(128-w,2), 64+idiv(128-h,2))
+
+class Battle.Command extends SelectBox -- クラス内にクラスを書くと生成順序？でうまく行かない。外側から追加しても良い。
+	@X, @Y, @W, @H = 18, 5, 11, 3
+	new: =>
+		super(SelectBox.buildButtons({L'たたかう', L'じゅもん', L'にげる', L'どうぐ'}, {{@@X*8,@@Y*8,5*8,2*8},{(@@X+6)*8,@@Y*8,5*8,2*8},{@@X*8,(@@Y+2)*8,5*8,2*8},{(@@X+6)*8,(@@Y+2)*8,5*8,2*8}}, nil, SelectBox.buildState4Indexes(4,2)))
+		b.text = '　'..b.text for b in *@buttons
+	attach: => _, @index = super(), 1
+	detach: =>
+		if 2 == @index
+			spells = [s for s in *g_player.spells when 呪文一覧[s].mp <= g_player.mp and s in {L'ホイミ', L'ギラ', L'ラリホー', L'マホトーン', L'ベホイミ', L'ベギラマ', (if issubclass(@parent.parent.__class, Dungeon) then L'ルーラ' else nil)}]
+			if #spells > 0
+				@sb = with SelectBoxRetro(spells, 8, 22, 7, L'じゅもん')
+					.detach = => Scene.__base.detach(Scene.current.parent) -- super
+				return @sb\attach()
+		elseif 4 == @index
+			items = [s for s in *g_player.items when s in {L'やくそう', L'りゅうのうろこ', L'ようせいのふえ', (if issubclass(@parent.parent.__class, Dungeon) then L'キメラのつばさ' else nil)}]
+			if #items > 0
+				@sb = with SelectBoxRetro(lume.unique(items), 9, 21, 7, L'どうぐ')
+					for b in *.buttons
+						n = lume.count(items, (i)-> i == b.id)
+						if n > 1 then b.text = b.text..'　'\rep(8-utf8.len(b.text))..toZenkaku(n)
+					.detach = => Scene.__base.detach(Scene.current.parent) -- super
+				return @sb\attach()
+		super()
+	draw: =>
+		@_static_starttime or= love.timer.getTime()
+		gr.setScissor(@@X*8-8, @@Y*8-16, @@W*8+16, math.min((@@H*8+32)*(love.timer.getTime()-@_static_starttime)*20, maid64.sizeY))
+		gr.draw_frame(@@X, @@Y, @@W, @@H, L'コマンド')
+		gr.points bdf1\points(b.text, b.box[1], b.box[2]) for b in *@buttons
+		gr.points bdf1\points('●', unpack @buttons[@index].box)
+		gr.setScissor()
+
+export generateMonster = (name--[[ = L'スライム']])->
+	damaged = (n)-> math.max(1, math.floor(lume.round(n*0.8, n)))
+	switch name
+		when 'スライム' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/スライム.png'), 1, 2, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(3), 3, 5, 3, {たたかう: 16} -- mp maxmp不要？無限！
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 0, 0, 15/16
+		when 'スライムベス' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/スライムベス.png'), 1, 3, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(4), 4, 7, 3, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 0, 0, 15/16
+		when 'ドラキー' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ドラキー.png'), 2, 3, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(6), 6, 9, 6, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 0, 0, 15/16
+		when 'ゴースト' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ゴースト.png'), 3, 5, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(7), 7, 11, 8, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 4/16, 0, 0, 15/16
+		when 'まほうつかい' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/まほうつかい.png'), 4, 12, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(13), 13, 11, 12, {たたかう: 8, ギラ: 8}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 0, 0, 0
+		when 'メイジドラキー' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/メイジドラキー.png'), 5, 12, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(15), 15, 14, 14, {たたかう: 8, ギラ: 8}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 0, 0, 0
+		when 'おおさそり' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/おおさそり.png'), 6, 16, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(20), 20, 18, 16, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 0, 0, 15/16
+		when 'メーダ' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/メーダ.png'), 7, 16, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(22), 22, 20, 18, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 0, 0, 15/16
+		when 'メトロゴースト' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/メトロゴースト.png'), 8, 18, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(23), 23, 18, 20, {たたかう: 4, ギラ: 12}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 6/16, 0, 0, 0
+		when 'ドロル' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ドロル.png'), 10, 25, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(25), 25, 24, 24, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 0, 0, 14/16
+		when 'ドラキーマ' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ドラキーマ.png'), 11, 20, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(20), 20, 22, 26, {たたかう: 6, ホイミ: 4, ギラ: 6}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 6/16, 2/16, 0, 0
+		when 'がいこつ' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/がいこつ.png'), 11, 30, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(30), 30, 28, 22, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 4/16, 0, 0, 15/16
+		when 'まどうし' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/まどうし.png'), 13, 35, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(30), 30, 28, 22, {たたかう: 6, ラリホー: 4, ギラ: 6}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 0, 3/16, 1/16
+		when 'てつさそり' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/てつさそり.png'), 14, 40, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(22), 22, 36, 42, {たたかう: 3, ホイミ: 1}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 0, 0, 15/16
+		when 'リカント' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/リカント.png'), 16, 50, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(6), 6, 9, 6, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 0, 1/16, 15/16
+		when 'しりょう' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/しりょう.png'), 17, 60, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(36), 36, 44, 34, {たたかう: 12, ホイミ: 4}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 4/16, 0, 7/16, 0
+		when 'メタルスライム' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/メタルスライム.png'), 115, 6, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(4), 4, 10, 255, {たたかう: 4, ギラ: 12}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 15/16, 15/16, 15/16
+		when 'ヘルゴースト' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ヘルゴースト.png'), 18, 70, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(36), 36, 40, 38, {たたかう: 3, ラリホー: 4, ギラ: 9}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 4/16, 0, 3/16, 1/16
+		when 'リカントマルム' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/リカントマルム.png'), 20, 80, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(38), 38, 50, 36, {たたかう: 4, マホトーン: 12}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 0, 4/16, 7/16
+		when 'メーダロード' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/メーダロード.png'), 20, 85, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(35), 35, 47, 40, {たたかう: 3, ホイミ: 12, ギラ: 1}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 4/16, 0, 0, 15/16
+		when 'ドロルメイジ' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ドロルメイジ.png'), 22, 90, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(38), 38, 52, 50, {たたかう: 4, マホトーン: 12}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 0, 2/16, 2/16
+		when 'キメラ' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/キメラ.png'), 24, 100, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(42), 42, 56, 48, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 0, 4/16, 15/16
+		when 'しのさそり' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/しのさそり.png'), 24, 100, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(35), 35, 60, 90, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 0, 7/16, 15/16
+		when 'しりょうのきし' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/しりょうのきし.png'), 28, 120, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(46), 46, 68, 56, {たたかう: 4, ホイミ: 12}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 4/16, 3/16, 5/16, 0
+		when 'ゴーレム' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ゴーレム.png'), 5, 10, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(70), 70, 120, 60, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 0, 15/16, 15/16, 15/16
+		when 'ゴールドマン' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ゴールドマン.png'), 6, 200, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(50), 50, 48, 40, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 0, 13/16, 15/16
+		when 'よろいのきし' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/よろいのきし.png'), 33, 130, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(55), 55, 76, 78, {たたかう: 4, マホトーン: 12}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 0, 6/16, 7/16
+		when 'メイジキメラ' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/メイジキメラ.png'), 34, 140, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(58), 58, 78, 68, {たたかう: 8, ラリホー: 8}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 2/16, 0, 0
+		when 'かげのきし' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/かげのきし.png'), 37, 150, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(50), 50, 79, 64, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 15/16, 15/16, 15/16, 15/16
+		when 'キラーリカント' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/キラーリカント.png'), 40, 155, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(60), 60, 86, 70, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 7/16, 0, 7/16, 15/16
+		when 'ドラゴン' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ドラゴン.png'), 45, 160, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(65), 65, 88, 74, {たたかう: 12, ほのお: 4}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 2/16, 7/16, 15/16
+		when 'スターキメラ' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/スターキメラ.png'), 43, 160, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(65), 65, 86, 60, {たたかう: 3, ベホイミ: 12, ほのお: 1}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 1/16, 8/16, 0
+		when 'だいまどう' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/だいまどう.png'), 50, 165, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(65), 65, 80, 70, {たたかう: 8, ベギラマ: 8}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 15/16, 15/16, 7/16
+		when 'あくまのきし' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/あくまのきし.png'), 54, 165, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(70), 70, 94, 82, {たたかう: 12, ラリホー: 4}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 1/16, 15/16, 3/16
+		when 'キースドラゴン' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/キースドラゴン.png'), 60, 150, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(70), 70, 98, 84, {たたかう: 12, ほのお: 4}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 7/16, 15/16, 15/16
+		when 'ストーンマン' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ストーンマン.png'), 65, 140, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(160), 160, 100, 40, {たたかう: 16}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 1/16, 7/16, 2/16, 15/16
+		when 'しにがみのきし' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/しにがみのきし.png'), 70, 140, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(90), 90, 105, 86, {たたかう: 3, ベホイミ: 12, ベギラマ: 1}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 1/16, 15/16, 7/16
+		when 'ダークドラゴン' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/ダースドラゴン.png'), 100, 140, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(100), 100, 120, 90, {たたかう: 9, ラリホー: 4, ほのお: 3}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 2/16, 15/16, 15/16, 7/16
+		when 'りゅうおう' then with Charactor()
+			.name, .img, .経験値, .gold, .items = name, gr.newFlyweightImage('assets/DQ1/りゅうおう.png'), 0, 0, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(100), 100, 90, 75, {たたかう: 3, マホトーン: 4, ベギラマ: 9}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 0, 15/16, 15/16, 15/16
+		when 'りゅうおう(竜)' then with Charactor()
+			.name, .img, .経験値, .gold, .items = 'りゅうおう', gr.newFlyweightImage('assets/DQ1/りゅうおう(竜).png'), 0, 0, {}
+			.hp, .maxhp, .攻撃力, .守備力, .strategy = damaged(130), 130, 140, 200, {たたかう: 8, かえんのいぶき: 8}
+			.攻撃回避率, .ギラ系回避率, .ラリホー回避率, .マホトーン回避率 = 0, 15/16, 15/16, 15/16
+			.BGM = 'assets/sounds/mml2ogg/りゅうおう戦.ogg' -- 判別フラグとする
+
+
+export Field = class Field extends Scene -- 前方宣言(local *)のため
+	@BGM = 'assets/sounds/mml2ogg/overworld.ogg'
+	new: (mapdata)=>
+		super()
+		@bg = Map('assets/DQ1/BG16x16.png', {16, 16})
+		@bg\set(mapdata)
+		@sprites = Map('assets/DQ1/SPR16x16.png', {16, 16})
+		@scroll = {0, 0} -- 移動中のアニメ用
+		@charactors = {}
+		@traps = {}
+		@offset = {0, 0} -- 画面揺らす用
+
+	しらべる: => -- nil -> 「何もなかった
+	-- isblocked: (x, y)=> @bg.data[y+1][x+1] >= 0x40 or (x==g_player.x and y==g_player.y) or lume.any(@charactors, (c)-> x == (c.tween?.target.x or c.x) and y == (c.tween?.target.y or c.y)) -- player用とNPC用まとめられなかった
+
+	update: (dt)=>
+		super(dt)
+		g_player\update(dt)
+		for c in *@charactors do c\update(dt)
+		if @tween and @tween.clock < @tween.duration then return @tween\update(dt) -- 移動アニメ中。何もさせない
+		if @tween -- マス目に到着したあと１回だけやること
+			@tween = nil
+			if g_player.トヘロスcount == 0 then MessageBoxRetro({L'トヘロスの　こうかが　きれた！🔻'})\attach()
+			if g_player.せいすいcount == 0 then MessageBoxRetro({L'せいすいの　こうかが　きれた！🔻'})\attach()
+			if  g_player.鎧 == 'ロトのよろい' or (g_player.鎧 == 'まほうのよろい' and g_player.まほうのよろいcount % 4 == 3) then g_player.hp = math.min(g_player.hp+1, g_player.maxhp)
+			else
+				if 0x2c == @bg.data[g_player.y+1][g_player.x+1] then g_player.hp, @update, _ = g_player.hp-1, coroutine.wrap(@_update_shaking), play'assets/sounds/mml2ogg/こうげき.ogg' -- 毒の沼地
+				if 0x2d == @bg.data[g_player.y+1][g_player.x+1] then g_player.hp, @update, _ = g_player.hp-14, coroutine.wrap(@_update_shaking), play'assets/sounds/mml2ogg/こうげき.ogg' -- バリア
+			gr.uipalette.retro1 =if g_player.hp / g_player.maxhp > 1/3 then gr.uipalette.base else {lume.color'#cc3333'}
+			if g_player.hp <= 0 then MessageBoxRetro({ <index>: coroutine.wrap((_,_)->
+				coroutine.yield 1, L('%sは　しんでしまった！🔻')\format(g_player.name)
+				Scene.current\detach()
+				Scene.current\blackout -> Scene.current = require('DQ1_玉座').build_死に戻り()
+			)})\attach()
+			lume.first([t for t in *@traps when t.check?(g_player) or (g_player.x == t[1] and g_player.y == t[2])])?\talk() -- 町についたのに戦闘にならないように一つだけ
+		if input.Ar() or input.Br()-- Ap()だとSelectBoxでAr()がすぐ来てしまう。Charactorがいる時は『話す』、いない時はコマンドを表示
+			for {dx, dy} in *{g_player.direction, {-1, 0}, {0, -1}, {1, 0}, {0, 1}} -- 向き優先だが、すべての方向でNPCに接していれば「はなす」
+				if npc := lume.match(@charactors, (c)->g_player.x+dx == c.x and g_player.y+dy == c.y) then return npc\talk()
+				elseif @bg.data[g_player.y+1+dy][g_player.x+1+dx] == 0x41
+					if npc := lume.match(@charactors, (c)->g_player.x+dx*2 == c.x and g_player.y+dy*2 == c.y) then return npc\talk()
+			@@.Command()\attach()
+		if d := input.arrowkeysp({{-1,0}, {0,-1}, {1,0}, {0,1}}, 16)
+			g_player.direction = d
+			isblocked = (x, y)-> @bg.data[y+1][x+1] >= 0x40 or lume.any(@charactors, (c)-> x == (c.tween?.target.x or c.x) and y == (c.tween?.target.y or c.y))
+			if isblocked(g_player.x+d[1], g_player.y+d[2]) then
+				play $mml2ogg([[ @8o3l16c<a ]]) -- 16フレームに１回なのでこれでいいのでは？
+			else
+				g_player.x += d[1]
+				g_player.y += d[2]
+				if @__class == Field then g_player.トヘロスcount, g_player.せいすいcount = g_player.トヘロスcount - 1, g_player.せいすいcount - 1
+				if @__class == Dungeon then g_player.レミーラcount = g_player.レミーラcount - 1
+				g_player.まほうのよろいcount += 1
+				@scroll = {d[1]*16, d[2]*16}
+				-- pp g_player, @scroll
+				@tween = tween.new((16-2)/60, @scroll, {0, 0})
+				@tween\update(dt)
+
+	_update_shaking: (dt)=>
+		for p in *{--[[{-4, -4}, {4, 4}, {4, -3}, {-3, 4}, ]]{-3, -3}, {2, 3}, {2, -3}, {-3, 2}, {-2, -2}, {2, 1}, {1, -2}, {-1, 1}, {-1, -1}, {0, 0}}
+			@@__base.update(@, dt)
+			@offset = p
+			_, dt = coroutine.yield()
+		@update = nil
+
+	blackout: (lazy)=> -- 暗転してシーン転換
+		@update = coroutine.wrap (dt)=>
+			for i = 0, 1, 2/60
+				@._blackout = i
+				_, dt = coroutine.yield()
+			lazy()
+			@update, @._blackout = nil, nil
+
+	draw_status: =>
+		return if input.idletime < 0.8 or Scene.current != @
+		X, Y, W, H = 3, 5, 6, 9
+		gr.setScissor(X*8-8,Y*8-16,(W+16)*8,(H*8+32)*(input.idletime-0.8)*20)
+		gr.draw_frame(X,Y,W,H,g_player.name)
+		s = L'レベル'..' '\rep(6-#tostring(g_player.level)*2)..toZenkaku(g_player.level)..
+			L'\nＨＰ'..' '\rep(8-#tostring(g_player.hp)*2)..toZenkaku(g_player.hp)..
+			L'\nＭＰ'..' '\rep(8-#tostring(g_player.mp)*2)..toZenkaku(g_player.mp)..
+			L'\nＧ'..' '\rep(10-#tostring(g_player.gold)*2)..toZenkaku(g_player.gold)..
+			L'\nＥ'..' '\rep(10-#tostring(g_player.経験値)*2)..toZenkaku(g_player.経験値)
+		gr.points((gr.setColor(gr.uipalette.retro1) or bdf1\points(s, X*8, Y*8)))
+		gr.setScissor()
+
+	draw周囲を暗く: =>
+		if not issubclass(@__class, Dungeon) or issubclass(@__class, Dungeon地上) then return
+		r = if g_player.レミーラcount > 0 then 29+60*g_player.レミーラcount/100 elseif g_player.たいまつ then 29 else 11.2
+		gr.stencil((-> gr.circle(gr.setColor(1,1,1) or 'fill', 128, 128, r)), 'increment')
+		gr.setStencilTest('equal', 0)--'greater', 0)
+		gr.rectangle(gr.setColor(0,0,0,.82) or 'fill', -9, -9, maid64.sizeX+18, maid64.sizeY+18) -- 揺らすときがあるため？
+		gr.setStencilTest()
+
+	predrawback: => gr.translate(@offset[1], @offset[2]) -- 揺らす用
+	draw: =>
+		dx, dy = lume.round(-g_player.x*16+@scroll[1]+120), lume.round(-g_player.y*16+@scroll[2]+120) -- 整数でないと汚い描画になる
+		@bg\draw(dx, dy)
+		@sprites.spritebatch\clear()
+		@sprites.spritebatch\add(@sprites.quads[g_player.chipids[(1+blink())%#g_player.chipids+1]], 120, 120)
+		for c in *@charactors
+			@sprites.spritebatch\add(@sprites.quads[c.chipids[(1+blink())%#c.chipids+1]], c.x*16+dx, c.y*16+dy)
+		@sprites\draw(0, 0)
+		@draw周囲を暗く()
+		@draw_status()
+		if @._blackout then gr.rectangle(gr.setColor(0,0,0,@._blackout) or 'fill', 0, 0, maid64.sizeX, maid64.sizeY)
+		-- if DEBUGMODE then gr.print(gr.setColor(gr.uipalette.base) or "(#{g_player.x},#{g_player.y})")
+		-- gr.print 'FPS '..love.timer.getFPS() , 80, 0
+
+
+export Town = class Town extends Field -- 前方宣言(local *)のため代入文にもする
+	@BGM = 'assets/sounds/mml2ogg/town.ogg'
+export class Castle extends Town
+	@BGM = 'assets/sounds/mml2ogg/castle.ogg'
+export Dungeon = class Dungeon extends Field
+	@BGM = 'assets/sounds/mml2ogg/dungeon.ogg'
+export Dungeon地上 = class Dungeon地上 extends Dungeon -- no mangleをexportするため代入文にもする
+
+
+class Field.Command extends SelectBox
+	@X, @Y, @W, @H = 18, 5, 11, 3
+	new: =>
+		super(SelectBox.buildButtons({L'しらべる', L'じゅもん', L'つよさ', L'どうぐ'}, {{@@X*8,@@Y*8,5*8,2*8},{(@@X+6)*8,@@Y*8,5*8,2*8},{@@X*8,(@@Y+2)*8,5*8,2*8},{(@@X+6)*8,(@@Y+2)*8,5*8,2*8}},{(->g_player\しらべる()), (->g_player\じゅもん()), (->g_player\つよさ()), (->g_player\どうぐ())},SelectBox.buildState4Indexes(4,2)))
+		b.text = '　'..b.text for b in *@buttons
+	clickB: =>
+		@playClickSE()
+		@detach()
+	draw: =>
+		@_static_starttime or= love.timer.getTime()
+		gr.setScissor(@@X*8-8, @@Y*8-16, @@W*8+16, math.min((@@H*8+32)*(love.timer.getTime()-@_static_starttime)*20, maid64.sizeY))
+		gr.draw_frame(@@X, @@Y, @@W, @@H, 'コマンド')
+		gr.points bdf1\points(b.text, b.box[1], b.box[2]) for b in *@buttons
+		gr.points bdf1\points('●', unpack @buttons[@index].box)
+		gr.setScissor()
+
+class Status extends Scene
+	@X, @Y, @W, @H = 15, 9, 11, 19
+	new: =>
+		@points =  L('　　　レベル:')..' '\rep(8-#tostring(g_player.level)*2)..toZenkaku(g_player.level)..
+			L('\n　　　ちから:')..' '\rep(8-#tostring(g_player.ちから)*2)..toZenkaku(g_player.ちから)..
+			L('\n　　すばやさ:')..' '\rep(8-#tostring(g_player.素早さ)*2)..toZenkaku(g_player.素早さ)..
+			L('\nさいだいＨＰ:')..' '\rep(8-#tostring(g_player.maxhp)*2)..toZenkaku(g_player.maxhp)..
+			L('\nさいだいＭＰ:')..' '\rep(8-#tostring(g_player.maxmp)*2)..toZenkaku(g_player.maxmp)..
+			L('\n　こうげき力:')..' '\rep(8-#tostring(g_player\攻撃力())*2)..toZenkaku(g_player\攻撃力())..
+			L('\n　　しゅび力:')..' '\rep(8-#tostring(g_player\守備力())*2)..toZenkaku(g_player\守備力())..
+			L('\n　ぶき:')..' '\rep(14-utf8.len(g_player.武器 or '')*2)..toZenkaku(g_player.武器 or '')..
+			L('\nよろい:')..' '\rep(14-utf8.len(g_player.鎧 or '')*2)..toZenkaku(g_player.鎧 or '')..
+			L('\n　たて:')..' '\rep(14-utf8.len(g_player.盾 or '')*2)..toZenkaku(g_player.盾 or '')
+		@points = bdf1\points @points, @@X*8, @@Y*8
+	update: (_)=> if input.Ar() or input.Br() then @detach() --@parent\detach() -- ~~コマンドウィンドウも閉じる~~
+	draw: =>
+		@_static_starttime or= love.timer.getTime()
+		gr.setScissor(@@X*8-8, @@Y*8-16, @@W*8+16, math.min((@@H*8+32)*(love.timer.getTime()-@_static_starttime)*20, maid64.sizeY))
+		gr.draw_frame(@@X, @@Y, @@W, @@H, L'つよさ')
+		gr.points@points
+		gr.setScissor()
+
+export g_player = with Charactor(11, 13, {0x20,0x21}) -- luaは１始まりなのでmapdataを調べる時はx y ともに+1する
+	.name, .level = 'ああああ', 1
+	.トヘロスcount, .せいすいcount, .レミーラcount, .まほうのよろいcount = -1, -1, -1, 0
+	.攻撃力 = => @ちから + (武器一覧[@武器] or 0)
+	.守備力 = => idiv(@素早さ, 2) + (鎧一覧[@鎧] or 0) + (盾一覧[@盾] or 0)
+
+	.しらべる = =>
+		item = Scene.current.parent\しらべる()
+		with MessageBoxRetro({<index>: coroutine.wrap ((_,_)->
+			coroutine.yield 1, L('%sは　じぶんの　あしもとを\nしらべた。🔻')\format(@name)
+			if item
+				coroutine.yield 1, L('\nなんと　%sを　みつけた！🔻')\format(item)
+				if lume.find(lume.keys(@@武器一覧), item) then g_player.武器, item = item, g_player.武器
+				if lume.find(lume.keys(@@鎧一覧), item) then g_player.鎧, item = item, g_player.鎧
+				if lume.find(lume.keys(@@盾一覧), item) then g_player.盾, item = item, g_player.盾
+				@items[] = item
+			else coroutine.yield 1, L'\nしかし　なにも　みつからなかった。🔻'
+			nil
+		)})
+			.detach = => @parent\detach()
+			\attach()
+
+	.つよさ = => Status()\attach()
+
+	.じゅもん = =>
+		if 0 == #@spells then return with MessageBoxRetro({L('%sは　まだ　じゅもんをつかえない。🔻')\format(@name)})
+			.detach = => @parent\detach()
+			\attach()
+		u = lume.concat {L'ホイミ', L'ベホイミ' }, if not issubclass(Scene.current.parent.__class, Dungeon) then {L'ルーラ', L'トヘロス'} elseif issubclass(Scene.current.parent.__class, Dungeon地上) then {L'リレミト'} else {L'レミーラ', L'リレミト'}
+		spells = [s for s in *@spells when 呪文一覧[s].mp <= @mp and s in u]
+		if 0 == #spells then return with MessageBoxRetro({L'ＭＰがたりない！🔻'})
+			.detach = => @parent\detach()
+			\attach()
+		with SelectBoxRetro(spells, 8, 22, 7, L'じゅもん')
+			.detach = =>
+				if @index <= 0 then return SelectBoxRetro.__base.detach(@)
+				@parent\detach()
+				MessageBoxRetro({<index>: coroutine.wrap 呪文一覧[@buttons[@index].id].gen_messages(g_player, nil, @buttons[@index].id)})\attach()
+			\attach()
+
+	.どうぐ = =>
+		if 0 == #@items then return with MessageBoxRetro({L'つかえるものを　まだ　もってない。🔻'})
+			.detach = => @parent\detach()
+			\attach()
+		u = lume.concat {L'やくそう', L'かぎ', L'せいすい', L'りゅうのうろこ', L'せんしのゆびわ', L'ぎんのたてごと' }, if issubclass(Scene.current.parent.__class, Dungeon) then {L'たいまつ' } else {L'キメラのつばさ', L'おうじょのあい', L'たいようのいし', L'あまぐものつえ', L'ロトのしるし', L'にじのしずく'  }
+		u = lume.concat(u, lume.keys(武器一覧), lume.keys(鎧一覧), lume.keys(盾一覧))
+		items = [s for s in *@items when lume.find(u, s)]
+		if 0 == #items then return with MessageBoxRetro({L'つかえるものを　もってない。🔻'})
+			.detach = => @parent\detach()
+			\attach()
+		with SelectBoxRetro(lume.unique_(items), 9, 21, 9, L'どうぐ') -- 複数持ちはまとめる
+			for b in *.buttons
+				n = lume.count(items, (i)-> i == b.id)
+				if n > 1 then b.text = b.text..'　'\rep(8-utf8.len(b.text))..toZenkaku(n)
+			.detach = =>
+				if @index <= 0 then return SelectBoxRetro.__base.detach(@)
+				@parent\detach()
+				name = @buttons[@index].id
+				if lume.find(lume.keys(道具一覧), name) then MessageBoxRetro({<index>: coroutine.wrap 道具一覧[name].gen_messages(g_player)})\attach()
+				elseif lume.find(lume.keys(武器一覧), name)
+					g_player.武器, tmp = name, g_player.武器
+					g_player.items[] = tmp
+					MessageBoxRetro({L('%sは　%sを　そうびした。🔻')\format(g_player.name, name)})\attach()
+				elseif lume.find(lume.keys(鎧一覧), name)
+					g_player.鎧, tmp = name, g_player.鎧
+					g_player.items[] = tmp
+					MessageBoxRetro({L('%sは　%sを　そうびした。🔻')\format(g_player.name, name)})\attach()
+				elseif lume.find(lume.keys(盾一覧), name)
+					g_player.盾, tmp = name, g_player.盾
+					g_player.items[] = tmp
+					MessageBoxRetro({L('%sは　%sを　そうびした。🔻')\format(g_player.name, name)})\attach()
+			\attach()
+
+export Title = class Title extends SelectBox
+	new: =>
+		item3 = lume.randomchoice{L'ガライの町', L'沼地の洞窟', L'岩山の洞窟',L'ドムドーラの町', L'りゅうおうの城'}
+		super(SelectBox.buildButtons({L'はじめから', L'つづきから', item3}, {{108,136,40,16}, {108,136+16,40,16}, {108,136+16*2,40,16}}, {(-> Scene.current = require('DQ1_玉座').build_opening()), (-> Scene.current = require('DQ1_全体マップ').build_load()), (-> @['start_at'..item3]())}))
+		b.text = '　'..b.text for b in *@buttons
+		BGM({'assets/sounds/mml2ogg/title_intro.ogg', 'assets/sounds/mml2ogg/title.ogg'})
+	draw: =>
+		gr.clear(lume.color'#005d78')
+		gr.draw(gr.newFlyweightImage('assets/DQ1/title.png'), 24, 64)
+		gr.points bdf1\points(b.text, b.box[1], b.box[2]) for b in *@buttons
+		gr.points bdf1\points('●', unpack @buttons[@index].box)
+
+	start_atガライの町: =>
+		g_player = with g_player
+			.name, .level = 'ああああ', 11
+			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
+			.hp, .mp, gold = .maxhp, .maxmp, .経験値
+			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
+			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
+			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
+			.chipids = {0x26, 0x27}
+		require('DQ1_全体マップ').save = lume.noop()
+		Scene.current = require('DQ1_ガライの町').build_from西口()
+	start_at沼地の洞窟: =>
+		g_player = with g_player
+			.name, .level = 'ああああ', 13
+			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
+			.hp, .mp, gold = .maxhp, .maxmp, .経験値
+			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
+			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
+			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
+			.chipids = {0x26, 0x27}
+		require('DQ1_全体マップ').save = lume.noop()
+		Scene.current = require('DQ1_沼地の洞窟').build_fromラダトーム方面()
+	start_at岩山の洞窟: =>
+		g_player = with g_player
+			.name, .level = 'ああああ', 15
+			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
+			.hp, .mp, gold = .maxhp, .maxmp, .経験値
+			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
+			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
+			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
+			.chipids = {0x26, 0x27}
+		require('DQ1_全体マップ').save = lume.noop()
+		Scene.current = require('DQ1_岩山の洞窟').build_from地上()
+	start_atドムドーラの町: =>
+		g_player = with g_player
+			.name, .level = 'ああああ', 17
+			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
+			.hp, .mp, gold = .maxhp, .maxmp, .経験値
+			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
+			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
+			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
+			.chipids = {0x26, 0x27}
+		require('DQ1_全体マップ').save = lume.noop()
+		Scene.current = require('DQ1_ドムドーラの町').build()
+	start_atりゅうおうの城: =>
+		g_player = with g_player
+			.name, .level = 'ああああ', 19
+			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
+			.hp, .mp, gold = .maxhp, .maxmp, .経験値
+			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
+			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ', L'ロトのしるし', }
+			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
+			.chipids = {0x26, 0x27}
+		require('DQ1_全体マップ').save = lume.noop()
+		Scene.current = require('DQ1_りゅうおうの城').build_from入口()
+
+
+love.load = ->
+	vudu?.initialize()
+	vudu?.initializeDefaultHotkeys()
+	if DEBUGMODE
+		g_player = with g_player
+			.level = 21
+			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
+			.hp, .mp = .maxhp, .maxmp
+			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
+			.gold = .経験値
+			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'たいまつ', L'キメラのつばさ', L'ぎんのたてごと', L'にじのしずく', L'おうじょのあい', L'ひかりのたま', L'ようせいのふえ'}
+			-- .武器, .鎧, .盾 = L'こんぼう', L'かわのふく', L'かわのたて'
+			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
+			-- .flags[] = L'呪い'
+			.chipids = {0x26, 0x27}
+		-- Title()\attach()
+		-- require('DQ1_玉座').build_opening()\attach()
+		-- require('DQ1_玉座').build_死に戻り()\attach()
+		-- require('DQ1_ラダトーム城').build_at城門()\attach()
+		require('DQ1_ラダトーム町').build_from西口()\attach()
+		-- require('DQ1_ロトの洞窟').build_from地上()\attach()
+		-- require('DQ1_ガライの町').build_from西口()\attach()
+		-- require('DQ1_マイラの村').build()\attach()
+		-- require('DQ1_沼地の洞窟').build_fromラダトーム方面()\attach()
+		-- require('DQ1_リムルダールの町').build_from入口()\attach()
+		-- require('DQ1_聖なる祠').build()\attach()
+		-- require('DQ1_岩山の洞窟').build_from地上()\attach()
+		-- require('DQ1_雨の祠').build()\attach()
+		-- require('DQ1_ドムドーラの町').build()\attach()
+		-- require('DQ1_メルキドの町').build_from入口()\attach()
+		-- require('DQ1_りゅうおうの城').build_from入口()\attach()
+		-- require('DQ1_りゅうおうの城').build_B7_fromB6_1()\attach()
+	else
+		Title()\attach()
+
+	if DEBUGMODE -- hotswap
+		Watchdog{
+			"#{$FILE}": -> Watchdog.transpile("#{$FILE}", 'main.lua')
+			'ui.yue': -> Watchdog.transpile('ui.yue')
+			'input.yue': -> Watchdog.transpile('input.yue')
+			'color.yue': -> Watchdog.transpile('color.yue')
+			'utl.yue': -> Watchdog.transpile('utl.yue')
+			'bigmap.yue': -> Watchdog.transpile('bigmap.yue')
+			'BDF.yue': -> Watchdog.transpile('BDF.yue')
+			'distribute.yue': -> Watchdog.transpile('distribute.yue')
+			'main.lua': -> lume.hotswap('main')
+			'input.lua': -> lume.hotswap('input')
+			-- 'ui.lua': -> lume.hotswap('ui') -- uiでwatchdogが定められているのでhotswap出来ない
+			'color.lua': -> lume.hotswap('color')
+			'utl.lua': -> lume.hotswap('utl')
+			'bigmap.lua': -> lume.hotswap('bigmap')
+			'BDF.lua': -> lume.hotswap('BDF')
+			'distribute.lua': -> lume.hotswap('distribute')
+			}
+	if DEBUGMODE -- build
+		-- os.execute 'rustc -C opt-level=3 --crate-type=cdylib ray.rs' -- android(32bit?)用
+		-- os.execute 'rustc -C opt-level=3 --crate-type=cdylib ray.rs' -- Windows用
+		-- os.execute 'zig build-lib -dynamic -target arm-linux-gnueabi ray.zig' -- android(32bit?)用
+		-- os.execute 'zig build-lib -dynamic -target x86_64-windows ray.zig' -- Windows用
+		-- require('distribute').build{'BDF.lua', 'DQ1_玉座.lua', 'DQ1_ラダトーム城.lua', 'DQ1_ラダトーム町.lua', 'DQ1_全体マップ.lua' }
+		love.thread.newThread([[
+_G.PROJECTNAME, _G.VERSION, description = ...
+require('distribute').build{'BDF.lua', 'color.lua', 'DQ1_玉座.lua', 'DQ1_ラダトーム城.lua', 'DQ1_ラダトーム町.lua', 'DQ1_全体マップ.lua', 
+	'DQ1_ロトの洞窟.lua', 'DQ1_ガライの町.lua', 'DQ1_マイラの村.lua', 'DQ1_沼地の洞窟.lua', 'DQ1_聖なる祠.lua', 'DQ1_リムルダールの町.lua', 'DQ1_雨の祠.lua',
+	'DQ1_岩山の洞窟.lua', 'DQ1_ドムドーラの町.lua', 'DQ1_メルキドの町.lua', 'DQ1_りゅうおうの城.lua' }
+-- require('distribute').modify_index_html(require('lib.os_capture').capture('echo \''..description..'\' | pandoc -f markdown -t html'))
+]])\start PROJECTNAME, VERSION
+
+
+_ = $mml2ogg([[
+Tempo(228)
+Track(1) q50 @8 o5 l4
+'bg'4+8,100'bg'8'bg''ad'　'ad''ad''g<b>''ad'　'bg'>'c<a''bg''ad'　'bg'>'c<a>''d<b>''ec'　'ge''ec''d<b>''c<a>'　<'bg''ad'4+16r16'ad'8'ad''bg'4+8,100'bg'8'bg''bg'　'g<b>''bg',100'ad'2+1,100
+]], title_intro, 9.473  ) -- 60/228 *4 * 9
+
+_ = $mml2ogg([[
+Tempo(117)
+Track(1) q50 @8 o5 l4
+g8+16,50,g16>cd　efgq100>c　^<b8+16a16a4+8g8　+8f+8,50f+8a8g,50e^
+<e8+16,50e16ee,50　f+g+,50a2+8　a8,50,b8,50>c8,50d2+8　<a8,50a8,50>c8,50c<b
+ag>e2+8　f8e8d8c2　<a>cd2+8e8d8c8c2　<bg>g2+8
+e8f8g8a2+8　<a8b8c8f2　e2c2+4
+Track(2) q50 @8 v80 o5 l4
+f8+16,50,f16eg　>ccq100c2　c2f4+8e8　r8e-8,50e-8f8e,50c^
+r<<g+g+,50　ab,50>c2+8　c8,50d8,50e8,50a2+8　f+8,50f+8,50a8,50ag
+ffg+2+8　g+8g+8g+8a2　eea2+8　f+8f+8f+8f2
+ff>e2+8　c+8d8e8f2+8　<f8g8a8a2　b8,50a8,50g8f8e2+4
+Track(3) q50 @8 v75 o5 l4
+r>c<b　b-ae2,100　f2,100>c<g　c>c<ce
+g>c<e2,100　e2,100ae　>c<af+a　>d<dg2,100
+g,100b,100eg+　beab　>c<af+a　>d<dgg
+>dfec+　<aade　fd>d<g　>e<g>c<g　>c
+]], title,  32.82 ) -- 60/117 *4 * 10
+
+
+_ = $mml2ogg([[
+Tempo(120)
+Track(1) q100 @8 o5 l32 KeyFlag-(edba)
+cea>cee-gb>d<bgedc<ge
+]], エンカウント, 1) -- 60/120
+
+_ = $mml2ogg([[
+Tempo(120)
+Track(1) q100 @8 o5 l32 KeyFlag+(fcg)
+e+4+8g-gaa+ b4+8fg-ga　a+4+8efg-g a4+8gaa+b　>c-4+8<fg-ga a+4+8fg-ga　a+4+8e+fg-g a4+8ee+fg-
+g-4+8>cdd+e e+4+8cdd+e　e4+8<b>c-cd d+4+8<b>c-cd　d+4+8<b>c-cd d4+8<aa+b>c-　c4+8<a+b>cc+d2
+l12 g-dg-fd+fe+de+ece　d+c-<afd+c-c<eg-a>ce
+Track(2) v80q100 @8 o4 l8 KeyFlag+(fcg)
+]], battle, 20 ) -- 60/120 *4 * 10
+
+_ = $mml2ogg([[
+Tempo(220)
+Track(1) q100 @8 o6 r8 l32cdefgab>c2
+Track(2) v80q100 @8 o4 {gc}4
+]], 勝利)
+
+_ = $mml2ogg([[
+Tempo(300)
+Track(1) q100 @8 o6 l24 ga-f+ga-f+
+]], こうげき, 0.5)--60/300* 1.5/4*6)
+
+_ = $mml2ogg([[
+Tempo(300)
+Track(1) q100 @8 o6 a16g16e-8
+]], ミス)
+
+_ = $mml2ogg([[
+Tempo(100)
+Track(1) q100 @8 o6 l24 ce-b-ebf q50 g4
+]], 呪文, 1.2) -- 60/100*2
+
+_ = $mml2ogg([[
+Tempo(120)
+Track(1) q100 @8 o6 l16 rfff q50 l8 fe- q100 g4+8
+Track(2) v80q100 @8 o5 l16 rc>bb- q50 l8 agb q100 a4+8
+]], レベルアップ, 2) -- 60/120 *3.5
+
+_ = $mml2ogg([[
+Tempo(90)
+Track(1) q100 @8 o7 l16 afd<b>
+Tempo(120) fe<ba>
+Tempo(150) d<baf
+Tempo(180) afd<b>　
+Tempo(210) fd<ba>
+Tempo(240) d<baf
+afd<b> fd<ba>　d<baf d8fa b>d8f ab>d8　fab>d g2r4
+]], ぎんのたてごと, 5.25) -- 60/90 *1 + 60/120 *1 + 60/150 *1 + 60/180 *1 + 60/210 * 1 + 60/240* 11
+
+_ = $mml2ogg([[
+Tempo(160)
+Track(1) q100 @8 o5 l16 g8ab> 連符{cdefg}4 連符{ab>cdef}4　q50g4g4g4q100　連符{gagagaga}2g4　a4d <ba g4
+]], ようせいのふえ, 4.6) -- 60/160 *12
+
+_ = $mml2ogg([[
+Tempo(90)
+Track(1) q100 @8 o4 l16 cgb>e<
+Tempo(135) da>cf<
+Tempo(160) eb>dg< f>cea<　l4連符{<g>dg>ce} 連符{a>cfa>c} 連符{fe<bge}連符{<bge<bg} c2r2
+]], にじのしずく, 3.85) -- 60/90 *1 + 60/135 *1 + 60/160 *10 
+
