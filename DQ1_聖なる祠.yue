@@ -1,0 +1,64 @@
+import 'macros' as {$}
+import 'utl' as :L, :play--, :toZenkaku
+-- import 'lib.lume'
+import 'ui' as :Scene, :BGM
+import 'main' as :Castle, :Charactor, :g_player, :MessageBoxRetro
+local *
+
+
+mapdata = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEECCCCCCCCCCCEEEEEEE
+EEEEEEEEC'''''''''CEEEEEEE
+EEEEEEEEC''C'C'C''CEEEEEEE
+EEEEEEEEC'CC'''CC'CEEEEEEE
+EEEEEEEEC'''CCC'''CEEEEEEE
+EEEEEEEE3'C'C'C'C'CEEEEEEE
+EEEEEEEE''C''FC'C'CEEEEEEE
+EEEEEEEEC'''CCC'''CEEEEEEE
+EEEEEEEEC'CC'''CC'CEEEEEEE
+EEEEEEEEC''C'C'C''CEEEEEEE
+EEEEEEEEC'''''''''CEEEEEEE
+EEEEEEEECCCCCCCCCCCEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+
+export build = ->
+	with Castle(mapdata)
+		.traps[] = with {8, 12}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_at聖なる祠()
+		.charactors[] = with Charactor(12,13,{0x3a,0x3b}) -- 老人
+			unless 'ロトのしるし' in g_player.items -- todo もらったあと
+				.talk = =>
+					MessageBoxRetro({<index>: coroutine.wrap((_, _)->
+						coroutine.yield 1, L'＊「そなたが　ロトのちをひく\nまことの　ゆうしゃなら\nしるしが　あるはず🔻'
+						coroutine.yield 1, L'\n＊「おろかものよ！　たちされい！🔻'
+						Scene.current.parent\blackout -> Scene.current = require('DQ1_全体マップ').build_at聖なる祠()
+						nil )})\attach()
+			else
+				.talk = =>
+					MessageBoxRetro({ L'＊「ロトの　ちをひくものよ。\n　　いまこそ　あめと　たいようが\n　　あわさるときじゃ！🔻\n＊「そなたに　にじのしずくを\n　　あたえよう！🔻' })\attach()
+					lume.remove(g_player.items, L'たいようのいし')
+					lume.remove(g_player.items, L'あまぐものつえ')
+					g_player.items[] = L'にじのしずく'
+
+		g_player.x, g_player.y = 8, 12
+		BGM Castle.BGM
+
+

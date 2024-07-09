@@ -1,0 +1,387 @@
+import 'macros' as {$}
+import 'utl' as :play, :L
+import 'lib.lume'
+import 'ui' as :Scene, :BGM
+import 'main' as :Field, :g_player, :Battle, :generateMonster, :LevelUps
+local *
+
+
+_ = $mml2ogg([[
+テンポ(220)
+トラック(1)
+@8 o5 l4
+レーラー　ソーーー　ーーファミ　レード<シ->　ドドミー　レーーー　ーーーー　ーーーー
+ラー`ドー　シーーー　ーーソファ　ミーファソ　ラーーー　ーーーー　ーーーー　ーーーー
+トラック(2)
+@8 v75 o4 l4 q75
+レラファラ　レシソシ　レ`ドラ`ド　レシ-ファン　ミララ`ド　レラファ#ラ　レラファ#ラ　ソシ-ラ`ド
+レ`ドラ`ド　レシソシ　レシソシ　レシ-ソ#シ　ド#ラミラ　レラミラ　ド#ラミラ　<シ>ラド#ラ ]], overworld, 17.454)--60/220*4*16)
+
+
+map_overworld = $to2d[[
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPP!!!!!!!PPPPPPPPPPPPPP!!!!!!!!!!!!PPPPPPPPPPPPPPPPPPPPPPPP"""""""""""!!!PPPPPPPPPPPPPP!!!!!!!!!!!!!!!PPPPPPPPPPPPPPP
+PPPPPPPPPP!!!!!!PPPPPPPPPPP!!!!!!!!!!!PPPPPPPPPPP!!!!!!!!!!!!#########PPPPPPPPPPPPPP"""""""""""""!4!PPPPPPPPPBBBBBBB#####!!!!!!!!!PPPPPPPPPPPPPP
+PPPPPPPPP!!!""""!!PPPPPPP!!!!!!"""""!!!PPPPPPPPPP!!!!!!!!!!""""""######PPPPPPPPPPPP"""""""""""""!!!PPPPPPPPPBBBB##########!!!!!!!!!!!PPPPPPPPPPP
+PPPPPPPP!!1""""""!!!!!!!!!!!!!""""""""!!PPPPPPPP!!!!!!!!!!""""""""""#####PPPPPPPPPP"""""""""""""BBPPPPPPPPPBBB#############!!!!!!!!!!!PPPPPPPPPP
+PPPPPPPP!""""""#####BBB!!!!!!""""""""""!!!!!PP!!!!!!!!!!!""""PPP"""""####PPPPPPPPP"""""""""""""BBBPPPPPPPBBB########"""""""""!!!!!!!!!!PPPPPPPPP
+PPPPPPPP""""""####BBBBBB!!!!!"""""""""""""!!!!!!!!!!!!!!""""PPPPP"""####PPPPPPPPBBB"""""""""""BBBPPPPPPPBBB#######"""""""""""""!!!!!!!!PPPPPPPPP
+PPPPPPPP"""#####BBBBBBBBB!!!""""""""""""!!!!!!!!!!!!!!!!"""""PPP#######PPPPPPPPBBB"""""""""""BBBPPPPPPP##########"""""""""""""""!!!!!!!!PPPPPPPP
+PPPPPPPP######BBBBB"""""BBBB""""""""""""""!!!!!!!!!!!!""""""PPP#######PPPPPPPPPPBBB"""""""""""BBBPPPPPPP########""""""""""""""""""!!!!!!PPPPPPPP
+PPPPPPPP####BBBB"""""""""BBB"""""""""""""""""!!!!!!!!"""""""""#######PPPPPPPPP"""BBB"""""""""""BBBPPPPP#######""""""""BBBBBB""""""""!!!!!PPPPPPP
+PPPPPPPP####BB""""""""""""BB"""""""$$$$$""""""!!!!!!!!"""""""""""###PPPPPPPPP"""""BBB""""""""""""BBPPPP#######"""""""BB""""BB"""""""""""PPPPPPPP
+PPPPPPPP##!!!""""""""""""BBB""""""$$$$$$$"""""""!!!!!!!!"""""""""#####PPPPPPP""""BBBB"""""""""""""BBPPPP######""""""BB""""""BB"""""""""""PPPPPPP
+PPPPPPPPPP!!!!""""""""""""BBB""""$$$$$$$$$"""""!!!!!!!!!!"""""""""######PPPP""""""BBBB""""""""""""BBPPPPP######""""""""""1"""BB"""""""""""PPPPPP
+PPPPPPPPPPP!!!!"""""""""""BBBB"""$$$$2$$$$""""""!!!!!!!!!""""""""""#####PPP"""""""BBBB"""""""""""""BPPPPP#######""""""""""""""""""""""""""PPPPPP
+PPPPPPPPPPPP!!!!!!!""""""""BBBB"""$$$$$$$$"""""""!!!!!!!!!"""""""""###!!PP"""""""""BBBBB"""""""""""BBPPPP#########""""""""""""""""""""""""PPPPPP
+PPPPPPPPPPPPP"""""!!!"""""""BBBB""""$$$$$"""""""""!!!!!!!!!""""""""##!!!P"""""""""""BBBBBB"""""""""BBBPPPP#######!!!"""""""""""""""""""PPPPPPPPP
+PPPPPPPPPPPP""""""!!!!""""""""BBB""""""""""""""""!!!!!!!!!"""""""""!!!!!P""""!!!!!!!!!!!BBB"""""""""BBBPPPP#####!!!!!""""""""""""""PPPPPPPPPPPPP
+PPPPPPPPPPPPPP""""!!!!"""""""!!!!""""""""""""""""!!!!!!!!!""""""""!!!!!!PP!!!!!!!!!!!!!!!!BBBB"""""""BBBPPPPP""!!!!!!!"""""""""BBBPPPPPPPPPPPPPP
+PPPPPPPPPPP"""""""!!!!!""""!!!!!!"""""""""""""""!!!!!!!!!!!""""""!!!!!!!!PP!!!!!!"""""""!!!!BBB"""""""BBBPP"""!!!!!!!!""""BBBBBB""""PPPPPPPPPPPP
+PPPPPPPPPPP"""""""!!!!!!!!!!!!!!!!""""""""""""""!!!!!!!!!!!!"""!!!!!!!!!!!)!!!!!"""""""""!!!!BBBB"""""""PPP"""!!!!!!!!""""BBBB"""$$$$PPPPPPPPPPP
+PPPPPPPPPP""""""""!!!!!!!!!!!!!!!!"""""""""""""""!!!!!!!!!!!!""!!!!!!!!!!!PP!!!"""""""""""!!!!BBBB"""""""""""!!!!!!!!""BBBB"""""$$$$$$$$PPPPPPPP
+PPPPPPPPP"""""""""!!!!!!!!!!!!!!!!"""""""""""""""!!!!!!!!!!!!!!!!!!!!!!!!!!P!!""""#####""""!!!!BBBBBBBBBBB""PP!!!!!!""BBBBB$$$$$$$$$$$$$$PPPPPPP
+PPPPPPPPP"""""""""!!!!!!!!!!!!!!!!!####"""""""""!!!!!!!!!!!!!!!!!!!!!!!!!!!P!!"""######"""""!!""BBBBBBBBBBBPPP!!!!!!"BBBBBB$$$$$$$$""$$$$$$PPPPP
+PPPPPPPPP"""""""""!!!!!!!!!!!!!!PP#######""""""!!!!!!!!!!!!!!!!!!!!!!!!!!!!PP""""#######""""!!!""""""####PPPPPP!!!!!!BBBBB$$$$$$$$""""$$$$$PPPPP
+PPPPPPPPP"""""""""!!!!!!!!!!!PPPPPPP######"""""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!PP""""#######""""!!!"""#######PPPPP!!!!!!!BBB$$$$$$$$$""""$$$$$PPPPP
+PPPPPPPPP"""""""""!!!!!!!!!!PPPPPPPPP#####""""!!!!!!!!!!!!!""""""####!!!!!!!!PPP"""#####""""""!!!""########PPPPPP!!!!!!!!$$$$$$$$$$""$$$$$$PPPPP
+PPPPPPPPPPP""""""""""""""""PPPPPPPPPP####""""!!!!!!!!!!!!""""""##########!!!!!PPPPPP"""""""""""!!!!!########PPPPPP!!!!!!!$$$$$$$$$$$$$$$$$PPPPPP
+PPPPPPPPPPPP"""""""""""""""PPPPPPPPPBBB"""""!!!!!!!!!!!!"""""""############!!!!!!!PPPPPP""""""""!!!!!!!""""""PPPP!!!!!!!!!$$$$$$$$$$$$$$$PPPPPPP
+PPPPPPPPPPPPPPPPP"""""""""PPPPPPPPPBBBBB""!!!!!!!!!"""""""""""""###########!!!!BBBBPPPPPP""""""""!!!!!""""""PPPP!!!!!!!!!!!$$$$$$$$$$$$$PPPPPPPP
+PPPPPPPPPPPPPPPPPPP"""""""PPPPPBBBBBBBBBBBB!!!!!!!!"""""""""""""##########!!!BBBBBPPPPPPPP""""""""!!!!!"""PPPPP!!!!!!!!!!!!!$$$$$$$$$$$PPPPPPPPP
+PPPPPPPPPPPPPPP###PPP""""PPPPBBBBBBBBBBBBB!!!!!!!!"""""""""BBBBB##########BBBBBBBPPPPPPPPPP"""""""!!!!!!!PPPPPPP!!!!!!!!!!!!!$$$$$$$$PPPPPPPPPPP
+PPPPPPPPPPPPPP######)""PPPBBBBBBBBBBBBB!!!!!!!!!!"""""""BBBBBBBBB########BBBBBBBBBPPPPPPPP"""""""""!!!!!!!PPPPPPP!!!!!!!!!!!!#######PPPPPPPPPPPP
+PPPPPPPPPPPPP#######PPPPP$$$$BBBBBBBBB!!!!!!!!!!!!"""BBBBBBBBBBBBB#######BBBBBBBBBBPPPPPP""""""""""!!!!!!!PPPPPP!!!!!!!!!!!###########PPPPPPPPPP
+PPPPPPPPPPPPP###################BBBBB!!!!!!!!!!!!!!BBBBBBB####BBBBB"""##BBBBBBBBBBBBPPPP""""""""""!!!!!!!!!PPPP!!!!!!!!!!!#########""""PPPPPPPPP
+PPPPPPPPPPPPP#####################BBB!!!!!!!!!!!!!BBBB########BBBBBB""""PPPPPPPPPBBBPPP""""""""""""!!!!!!!!PPP!!!!!!!!!!!#######""""""""PPPPPPPP
+PPPPPPPPPPPPPP#####################BB!!!!!!!!!!!!!!##############BB"""""""""PPPPPPBBBBBBB""""""""""!!!!!!!!PP!!!!!!!!!!!#######""""""""""PPPPPPP
+PPPPPPPPPPPPPPP#########!!!!!######PP!!!!!!!!!!!!!"""""""#########BB""""""$$$$$$$$$$BBBBBB""""""""!!!!!!!!PP!!!!!!BBBB########""""""""""""PPPPPP
+PPPPPPPPPPPPPPPP###""""!!!!!!!###PPPPP!!!!!!!!!!!!""""""""""#####BBBB""$$$$$$$$$$$$,,,"""""""""""!!!!!!!!!)!!!!""BBBBBB######""""""""""""PPPPPPP
+PPPPPPPPPPPPP""""""""!!!!!!!!####PPPPPP!!!!!!!!!"""""""""""""#####BBBB$$$$$$$$$$$$,,,,,"""""""""""!!!!!!PPP""""""BBBBBBB####"""""""""""""PPPPPPP
+PPPPPPPPPPP"""""""""!!!!!!!!"""""PPPPP!!!!!!!!"""""""""""""""########PPPP$$$$$$$,,,,,,,,,""""""""!!!!PPPPPP"""""""""BBBBB##"""""""""""""PPPPPPPP
+PPPPPPPPPP"""""""!!!!!!!"""""""PPPPPPP!!!!!!!"""""""""""!!!!!!!!####PPPPPPPPPPP,,,,,,,,,""""""""PPPPPPPPPPPPP"""",,,,BBBB""""""""""""""PPPPPPPPP
+PPPPPPPPPP""""""!!!!!""""""""PPPPPPPPPP!!!!!!!!!!!!!!!!!!!!1!!!!!PPPPPPPPPPPPPPPP,,,,,,""""""PPPPPPPPPPPPPPPPPP,,,,,,,BBBBBB"""""""PPPPPPPPPPPPP
+PPPPPPPPPP"""""!!!!!!""""""PPPPPPPP!!!!!!!!!!!!!!!!!!!0!!!!!PPPPPPPPPPPPPPPPPPPPPPPPP"""""PPPPPPPPPPPPPPPPPPPPPPPP,,,,,BBBBBBBBPPPPPPPPPPPPPPPPP
+PPPPPPPPPPP"""""!!!"""""PPPPPPPPPP!!!!!!!!!!!!!!!!!!!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP,,,,,,,BBBPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPP""""""!!""""PPPPPPPPP!!!!!!!!!!!!!!!!!!!!!!PPPPPPPPBBBPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP,2,BBPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPP"""""""""""PPPPPPPPP"""""!!!!!!!!!!!!!!!!PPPPPPPPBBBBBBPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP""""""PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPP"""""""PPPPPPPPP"""""""!!!!!!!!!!!!!!PPPPPPP,,,BBBBBBBPPPPPPPPPPPPPPPPPPPPPPPPPPP""""""""""!!!!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPP""""""""""PPPPPPPPP"""""""!!!!!!!!!!!PPPPPPPB,0,BBBBBBBPPPPPPPPPPPPPPPPPPPPP"""""""""""""""!!!!!!!!!!!!PPPPPPPPPPPPPPPP####PPPPPPPP
+PPPPPPPPPPPPP""""""""""PPPPPPPP!!!!!!!!!!!!!!!!!!!!PPPPPBB,,,$$BBBBBBPPPPPPPPPPPPPPPPP$$$$$"""""""""""""!!!!!!!!!!!!!!PPPPPPPPPPPP#######PPPPPPP
+PPPPPPPPPPPPP"""""""""""PPPPPPPP!!!!!!!!!!!!!!!!!!!PPPPBBBBBBB$$BBBB$PP$$$$$P$$$$$$PP$$$$$$$$""""""""""""!!!!!!!!!!!!!!!,2,PPPPPP########PPPPPPP
+PPPPPPPPPPPPPP""""""""""PPPPPPPPP!!!!!!!!!!!!!!!!!!PPPPPBBBB$$$$BBB$$$$$$PPPPPPPPP$$$$$$$$$$$$""""""""""""!!!!!!!!!!!!!!,,,PPPPP"""######PPPPPPP
+PPPPPPPPPPPPP"""""""BBBBPPPPPPP!!!!!!!!!!!!!!!!!!!PPPPPBBBB$$$$BBB$$$$$BBPPPPPPPPPBB$$$$$$$$$$$""""""""""""""""""!!!!!!######PP""""""""""PPPPPPP
+PPPPPPPPPPPPP!!"""BBBBBBBBBBBBBBB!!!!!!!!!!!!!###PPPPPPPBB$$$$$$BBB$$$BBPPPPPPPPPPPBBBB$$$$$$$$$$""""""""""""""""BBB##########"""""""""""PPPPPPP
+PPPPPPPPPPP!!!!BBBBBBBBBBBBBBBBBBB!!!!!!!!!!!!!###PPPPPPBB$$$$$BBBBB$BBPPPPPPPPPPPPPBBBB$$$$$$$$$$""""""""PPPPBBBBBB#########""""""""""""PPPPPPP
+PPPPPPPPP!!!!BBBBBBBBBBBBBBBBBBBBBB!!!!!!!!!!!!!###PPPPPBBB$$$BBB#####BBPPPPPPPPPPPPPPBBB$$$$$$$$$""""""PPPPPPPBBBBBBB########"""""""""""PPPPPPP
+PPPPPPPP!!!!BBBB""""""""""BBBBBBBBBBBBB!!!!!!!!!!!PPPPPPPBB$$BBB######PPPPPPPPPPPPPPPPPBBBB$$$$$$"""""PPPPPPPPBBBBBBBBBBBBB###"""""""PPPPPPPPPPP
+PPPPPPP!!!!BBB"""""""""""""BBBBBBBBBBBBBB!!!!!!!!!PPPPPPPBB,BBBBBB#BBBBBPPPPPPPPPPPPPPPPPBBB######"""""PPPPBBBB"""""BBBBBBBB""""""""PPPPPPPPPPPP
+PPPPPPP!!!!"""""""""",,,,""""BBBBBBBBBBBBBB!!!!!!PPPPPPPBB,,BBBBB!!!BBBPPPPPPPPPPPPPPPPPPBB########""""""""""""""""""BBBBBBBBBB"""""PPPPPPPPPPPP
+PPPPPPP!!!""""""""",,,,,,,"""""BBBBB!!!!2BBBB!!!!!PPPPPPPBB,,BBB!!!BBBPPPPPPPPPPPPPPPPPPBBB########""""""""""""""""""BBBBBBBBB$$$""""PPPPPPPPPPP
+PPPPPPP!!!!""""""",,,,,,,,""""""!!!!!!!BBBB!!!!!!!PPPPPPPPBB,,,BB!!!!BBPPPPPPPPPPPPPPPPPPBB######!!!!!!!!!!"""""""""BBBBBBBB$$$$$$""PPPPPPPPPPPP
+PPPPPPP!!!""""""""",,,,,,""""""""""!!!BBBB!!!!!!!!!PPPPPPPBBB,,,,,,BBBPPPPPPPPPPPPPPPPPPPPBB####!!!!!!!!!!!!!!!""""""""""""$$$$$$$$""PPPPPPPPPPP
+PPPPPPP!!!"""""""""",,,,"""""""""""""BBBB!!!!!!!!!PPPPPPPPPPBBB,,BBBPPPPPPPPPPPPPPPPPPPPPBBB###!!!!!!!!!!!!!!!!!""""""""""$$$$$$$$""""PPPPPPPPPP
+PPPPPPP!!!!""""""""""""""""""""""""""BBBBB!!!!!!!PPPPPPPPPPPPPBBBBPPPPPPPPPPPPPPPPPPPPPPPPBBB###!!!!!!!!!!!!!!!!"""""""""""$$$$$$""""""PPPPPPPPP
+PPPPPPP!!!!!""""""""""""""""""BBBBBBBBBBBBBBBBBPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPBBB########"""!!!!!!"""""""""""""$$$$""""""""PPPPPPPP
+PPPPPPPP!!!!!"""""""""""""""BBBBBBBBBBBB"""!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPBB#######"""""!!!!"""""BBBBBBBB"""""""""""""PPPPPPPP
+PPPPPPPP!!!!!!""""""""""###BBBBBB""""""""!!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP#####"""""""""""""BBB!!!!!BBBBBB""""""""""PPPPPPP
+PPPPPPPP!!!!!!!""""""""######BBB""""""""!!!!!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"""""""""""""BBB!!!!!!!!!BBBB"""""""""PPPPPPP
+PPPPPPPPP!!!!!!!""""""""""#####"""""""!!!!!!!!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"""""""""""BB!!!"""""!!!BBBB""""""""PPPPPPP
+PPPPPPPPPPP!!!!!!!"""""""""######"""!!!!!!!!!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP""""""""""""!!!!!""""""""!!!BB""""""""PPPPPPP
+PPPPPPPPPPPP!!!!!!!!""""""""###"""!!!!!!!!!!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"""""""""""""!!!!"""PPPPPPP"!!!BBBB"""""PPPPPPP
+PPPPPPPPPPPPP!!!!!!!!!"""""""""""!!!!!!!!!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"""""""""""!!!!!""PPPPPPPPP"!!!BB""""""PPPPPPP
+PPPPPPPPPPPPPPP!!!!!!!!!"""""""""!!!!!!!!!!PPPPP""""""""PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP""""""""""!!!"""PPP!!!PPP""!!BBB"""""PPPPPPP
+PPPPPPPPPPPPPPPPP!!!!!!!!!"""""""!!!!!!!PPPPPP""""""""PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP""""""""""!!"""PPP!1!$$$""!!BB""""""PPPPPPP
+PPPPPPPPPPPPPPPPPPP!!!!!!!!!"""""""!!!!!!PPPP!!!"""""PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP""""""""""""""""PPP!!!PPP""!!BB""""""PPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPP"""""""""!!!!!!!!!!!!"""PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP""""""""""""""""PPPPPPP""!!BB""""""PPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPP"""""""""""!!!!!!!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP""""""""""""""PPPPP"""BBBB"""""PPPPPPPPP
+PPPPPPPPPPPPPPPPPBBBBBBPPPPPP""""""""""""""!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"""""""""""""BBBBB""""""""""""""PPPPPPPPP
+PPPPPPPPPPPPPPPPBBB""""""PPPPPP"""""""""""""!!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPBBBBBBBBPPPPPPPPPPPPPPPPP"""""""""""""BBBBB""""""""""""PPPPPPPPPP
+PPPPPPPPPPPPPPPBBB"""""""""PPPPPP"""""""""""""!!!PPPPPPPPPPPPPPPPPPPPPPPPPPPPBBBBB$$$$$$$PPPPPPPPPPPPPPPP""""""""""""""BBBB###"""""""!!PPPPPPPPP
+PPPPPPPPPPPPPPBBB"""""""!!!!PPPPPPP""""""""""""!!!!PPPPPPPPPPPPPPPPPPPPPPPPP$$$$$$$$BBBB$$PPPPPPPPPPPPPPPP""""""""""""""BBB####"""""!!!!!PPPPPPP
+PPPPPPPPPPPPPBBB"""""!!!!!!!!!!PPP""""""""""""!!!!!!PPPPPPPPPPPPPPPPPPPPPPPBBBBBBBBBBBBBB$$PPPPPPPPPPPPPPPPP""""""""""""""BB###""""!!!!!!PPPPPPP
+PPPPPPPPPPPPBBB"""""!!!!!!!!!!!!!P"""""""""""!!!!!!!!PPPPPPPPPPPPPPPPBBBBBBBBB$$$$$$BBBBBB$PPPPPPPPPPPPPPPP""""""""""""""""BB###""""!!!!!PPPPPPP
+PPPPPPPPPPPBBB"""!!!!!!!!!!"""!!!)"""""""""""!!!""!!!!PPPPPPPPPPPPBBBBBBBB$$$$$$$$$$$$$BBB$BBPPPPPPPPPPPPPPP""""""""""""""""BB##""""!!!!!PPPPPPP
+PPPPPPPPPPPBBB"""!!!!!!!!""""""""PP"""""""""!!!"""""!!PPPPPPPPPPBBBBBBBBB$$BBBBBBBBBBB$$BB$BBPPPPPPPPPPPPPPPPP""""""""""""""BBB##""""!!!!PPPPPPP
+PPPPPPPPPPPBBP""""!!!!!"""""""""""PP"""""""!!!"""""""!!PPPPPPPPBBBBBBBBB$$BBB$$$$$$$BBB$BB$BBBPPPPPPPPPPPPPPPP"""""""""""""""BB###""""!!PPPPPPPP
+PPPPPPPPPPP"""""!!!!!!""""""""""""BBBB"""""!!!!"""""!!!PPPPPPPPPBBBBBBBB$BBBBBBBB$$$BBB$$B$BBBBPPPPPPPPPPPPPPPP"""""""""""""""BB""""""""PPPPPPPP
+PPPPPPPPPPP""""!!!!!!##"""""""""""BBBBBBB"""!!!!"""!!!!PPPPPPPPPPP##$$$$$BBBBBBBBB$BBBBB$$$$BBBPPPPPPPPPPPPPPPPP"""""""""""#####""""""""PPPPPPPP
+PPPPPPPPPPP"""""!!!!####"""""""""BBBBBBBBBBB!!!!!!!!!!PPPPPPPPPP#####BBB$$BBBBBBBB$BBBBBBPPPBBBBPPPPPPPPPPPPPPPPPPP"""""""######""""""""PPPPPPPP
+PPPPPPPPPPP"""""!!#####"""""""""BBBBBBBBBBBBB!!!!!!!PPPPPPPP"""#######BBB$$$$$BBBB$BBBBBPPPPPBBBPPPPPPPPPPPPPPPPPPPPP"""""""#####""""""PPPPPPPPP
+PPPPPPPPPPPPP"""!!####"""""BBBBB$$$$$$$BBBBBBB!!!!PPPPPPPPP"""""#####BBBBBBBBBBBBB$BBBBPPPPPPPBBBPPPPPPPPPPPPPPPPPPPPP"""""""#####"""PPPPPPPPPPP
+PPPPPPPPPPPPPP"""######""BBB$$$$$$$$$$$$BBBBBPPPPPPPPPPPP""""""######BBBBBBBBBBBBB$$$$$PPPPPPPPBBPPPPPPPPPPPPPPPPPPPPPP"""""########""PPPPPPPPPP
+PPPPPPPPPPPPP""""#########$$$$$$$$$$$$$$$BBBPPPPPPPPPPP""""""########BBBBB!!!PPPPBBBBBBBBPPPPPBBPPPPPPPPPPPPPPPPPPPPP""""""""#####"""""PPPPPPPPP
+PPPPPPPPPPP"""""""#######$$$$$$$$$$1$$$$BBPPPP"""""""""""""#########BB""!!!!PPPPPP,,,,,BBBB""BBPPPPPPPPPPPPPPPPPPPPPPP"""""""####"""""PPPPPPPPPP
+PPPPPPPPPPP"""""""""#####$$$$$$$$$$$$$$PPPPP"""""""PPPPPPP#######BBBB"""""!!!!PP,,,,,!!!!BBB"PPPPPPPPPPPPPPPPPPPPPPPPP"""""#####"""""PPPPPPPPPPP
+PPPPPPPPPPPP""""""""""##$$$$$$$$$$$$$PPPPP"""PPPPP""""""#######BBB""""""""!!!!),,,,,!!!!!!BB!!!PPPPPPPPPPPPPPPPPPPPPPPP"""""#####"""""PPPPPPPPPP
+PPPPPPPPPPPPPPPP"""""""""$$$$$$$$$$$PPPPP""""""""PPPPPPPP#####BB""""""""""!!!P,,,,,!!!!!!BBBB!!!PPPPPPPPPPPPPPPPPPPP""PP"""""###"""""PPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPP""$$$$$$$$$PPPPPPPPPP"""""""""""""""###BB""""""""""""PP,,,,,!!!!!!BBBBB!!PPPPPPPPPPPPPPPPPPPP""""P""""""""""""PPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPP$$$$$$$$$$$$$$$$PPPPP""""""""PPPP"""""""BBB""""""""""PPPPPP,,,!!!!!!!""BB!!!!PPPPPPPPPPPPPPPPPP"""""PP"""""""""""PPPPPPPPPPPP
+PPPPPPPPPPPPPPP$$$$$$$$$$$$$$$$$$$$"""""PPPPPPPPPPPPP""""BBB""""""""PPPPPPPPP!!!!!!!!!!!"""BB!!!!PPPPPPPPPPPPPPPPPPP""""PP"""""""""PPPPPPPPPPPPP
+PPPPPPPPPPPPP$$$$$$######$$$$$$$$$"""""""""""PPPPPPP"""BB"""""""PPPPPPPPPPP"""!!!!!!!!!!""""BBB!!!PPPPPPPPPPPPPPPPP""""""PP"""""""PPPPPPPPPPPPPP
+PPPPPPPPPPPPPP$$$####"""""$$$$$$$""""""""""""""""")""BBB"""""""PPPPPPP"""""""""!!!!!!!!"""""""BB!!!PPPPPPPPPPPPPPPP"","""")""""""PPPPPPPPPPPPPPP
+PPPPPPPPPPPPP######"""""""""""$$$$""""""""""""""PPPPBB""""!!!!PPPPPPPPPP""""""""!!!!!!"""""""BB!!!!PPPPPPPPPPPPPPP"",,,"""PP""""PPPPPPPPPPPPPPPP
+PPPPPPPPPPPP#####"""""""""""""""$$$"""""""""""PPPPPPPPP!!!!!!PPPPPPPPPP""""""""""CC!CC""""""BBBB!!!!PPPPPPPPPPPPPP""",,,""PP"""PPPPPPPPPPPPPPPPP
+PPPPPPPPPPP#######"""""""""""""""$$$""""""PPPPPPPPPPPP!!!!!!!PPPPPPPPPPP"""""""""C!!!C""""""BBBBB!!!!PPPPPPPPPPPPPP""",,"""PPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPP#####BBBB"""""""""""""$$$$""""""BBPPPPBBBBB!!!!!!PPPPPPPPPPPPPP"""""""C!1!C"""""""BBBBB###PPPPPPPPPPPPPP""!!!!"""PPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPP######BBBBB""""""""""$$$$$$"""""BBBPPBBBB""!!!!!PP!!!!PPPPPPPPPPP"""""C!!!C"""""""""BB#####PPPPPPPPPPPPPP""!!!####!!!PPPPPPPPPPPPPPPP
+PPPPPPPPPPP########BBBBB""""""""$$$$$$$"""""BBBBBBB""""!!!!)!!!!!""""PPPPPPPP""""CCCCC""""""""BBB######PPPPPPPPPPPPPP!!!#####!!!!!!!!!PPPPPPPPPP
+PPPPPPPPPPP#######BBBBBBBBBB""""$$$$$$$$##"""BBBBB"""""!!!PP!!!!""""""""""BBBB"""""""""""""""BBB######PPPPPPPPPPPPPPPP#####BBBBB!!!!!!!PPPPPPPPP
+PPPPPPPPPPP#######BB"""""BBBBBBBB$$$$$#####BBBBBB"""""""PPP"""!!!!!!"""""""BBBBBB"""""""""BBBBBB#####PPPPPPPPPPPPPPPP####BBB""BBBB!!!!!PPPPPPPPP
+PPPPPPPPPPPP#####BB"""""""""BBBBBBB$$#######BBBBBB"""""PPP"""""!!!!!!""""""""BBBBBBB""""BBBBBBB#######PPPPPPPPPPPPPP####BBB""""BBBB!!PPPPPPPPPPP
+PPPPPPPPPPPPPP###BB"""""""""""BBBB########BBBBBBB"""""PPP"""""""!!!!!!""""""""BBBBBBBBBBBBBBBB#########PPPPPPPPPPPP####BB"""4""BB!!!PPPPPPPPPPPP
+PPPPPPPPPPPPPPPP##BB""""!!!!!!!##########BBBBBBB"""""PPPP""""""!!!!!!!!"""""",,,BBBBBBBBBBB,,,,######PPPPPPPPPPPPPPP###BB"""""BBBB!!!!PPPPPPPPPP
+PPPPPPPPPPPPPPP####BBB!!!!!!!!#########BBBBBB""""""""PPPPP""""!!!!!!!!!""",,,,,,,,,BBBBBB,,,,,,#######PPPPPPPPPPPPPPP###BB""""BB###!!!PPPPPPPPPP
+PPPPPPPPPPPPPP#####BB!!!!!!!!!!#######BBBBBB"""""""""PPPP"""""!!!!!!!!!""",,,,,,,,,,BBBBB,,,,,,######PPPPPPPPPPPPPPPP###BBB"BBB###!!!PPPPPPPPPPP
+PPPPPPPPPPPPPPP####BB!!!!!!!!!!########BBBB"""""""""PPPPPP"""""!!!!!!!""",,,,,,,,,,,,BBB,,,,,,,,,,,##PPPPPPPPPPPPPPPPP###BB"BB###!!!PPPPPPPPPPPP
+PPPPPPPPPPPPPPPP#####!!!!!!!!!#######BBBBB"""""""""PPPPPPP"""""""!!!!!"""",,,,,,,,,,,,,,,,,,,,,,,,,,PPPPPPPPPPPPPPPPPP#########!!!!PPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPP####!!!!!!!####PPPBBBBBBB"""""""PPPPPPPPP"""""""!!!!"""",,,,,,,,,,,,PP,,,,,,,,,,,PPPPPPPPPPPPPPPPPPP######,,,PPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPP######!!!!!####PPPPP""""""""""""PPPPPPPPPPPP""""""!!"""",,,,,,,,,,,,PPPP,,,,,,,,,PPPPPPPPPPPPPPPPPPPPP####,,PPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPP###############PPP"""""""""""PPPPPPPPPPPPPPPP""""""""",,,,,,,,,,,,PPPPPPPP,,,,PPPPPPPPPPPPPPPPPPPPPPPP##,,PPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPP##############)#####"""""PPPPPPPPPPPPPPPPPPPPP""""",,,,,,,,,,,,,PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP,,,,PPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPP###########PPP######PPPPPPPPPPPPPPPPPPPPPPPPPPPP,,,,,,,,,,,,,PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP,,,PPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPP#######PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP,,,,,,,,,,PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP]]
+
+
+EncountMap = $to2d[[
+44336465
+34324465
+25114365
+26d27777
+66d58a66
+abd9ad89
+bbdcee9a
+cceddeaa
+]]
+
+macro C = (a)-> "#{string.byte(a)}"
+
+build = ->
+	with Field(map_overworld)
+		.traps[] = with {54, 49}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = if not lume.find(g_player.items, L'ひかりのたま') then require('DQ1_ラダトーム城').build_at城門() else require('DQ1_ラダトーム城').build_ending()
+		.traps[] = with {59, 48}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = switch g_player.direction[2]*2 + g_player.direction[1] -- {-1,0}->-1.. tamale.lua(パターンマッチング)を使えばより直感的に書ける
+					when -1 then require('DQ1_ラダトーム町').build_from東口()
+					when 1 then require('DQ1_ラダトーム町').build_from西口()
+					when -2 then require('DQ1_ラダトーム町').build_from西口() -- 南からはいったとき西口にする
+					when 2 then require('DQ1_ラダトーム町').build_from北口()
+		.traps[] = with {37, 20}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_ロトの洞窟').build_from地上()
+		.traps[] = with {10, 11}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = switch g_player.direction[1]
+					when -1 then require('DQ1_ガライの町').build_from東口()
+					else require('DQ1_ガライの町').build_from西口() -- 1, 0
+		.traps[] = with {121, 19}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_マイラの村').build()
+		.traps[] = with {121, 51}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_沼地の洞窟').build_fromラダトーム方面()
+		.traps[] = with {121, 56}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_沼地の洞窟').build_fromリムルダール方面()
+		.traps[] = with {120, 79}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_リムルダールの町').build_from入口()
+		.traps[] = with {124, 117}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_聖なる祠').build()
+		.traps[] = with {98, 9}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_雨の祠').build()
+		.traps[] = with {40, 65}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_岩山の洞窟').build_from地上()
+		.traps[] = with {35, 99}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_ドムドーラの町').build()
+		.traps[] = with {83, 109}
+			.talk = =>
+				if not lume.find(g_player.flags, 'メルキドのゴーレムを倒した')
+					with b = Battle(generateMonster 'ゴーレム')
+						.detach = =>
+							if .monster.hp <= 0 then g_player.flags[] = 'メルキドのゴーレムを倒した'
+							else g_player.y = 108 -- 逃げたとき１マス下がる
+							Battle.__base.detach(b) -- super
+						\attach()
+		.traps[] = with {83, 111}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_メルキドの町').build_from入口()
+		.traps[] = with {59, 54}
+			.talk = =>
+				save()
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_りゅうおうの城').build_from入口()
+		_monster = ->
+			monsters = switch EncountMap[idiv(g_player.y-8, 16)+1][idiv(g_player.x-8, 16)+1]
+				when $C(1) then {スライム: 3, スライムベス: 2}
+				when $C(2) then {スライム: 1, スライムベス: 3, ドラキー: 1}
+				when $C(3) then {スライム: 1, スライムベス: 1, ドラキー: 1, ゴースト: 1}
+				when $C(4) then {スライムベス: 2, ドラキー: 1, ゴースト: 1, まほうつかい: 1}
+				when $C(5) then {ゴースト: 1, まほうつかい: 1, メイジドラキー: 2, おおさそり: 1}
+				when $C(6) then {ゴースト: 1, まほうつかい: 1, メイジドラキー: 1, おおさそり: 1, がいこつ: 1}
+				when $C(7) then {メイジドラキー: 1, おおさそり: 1, がいこつ: 1, まどうし: 1, リカント: 1}
+				when $C(8) then {がいこつ: 1, まどうし: 1, てつさそり: 1, リカント: 2}
+				when $C(9) then {てつさそり: 1, しりょう: 1, リカントマルム: 1, ゴールドマン: 1}
+				when $C(a) then {しりょう: 1, キメラ: 2, リカントマルム: 1, ゴールドマン: 1}
+				when $C(b) then {キメラ: 1, しのさそり: 1, しりょうのきし: 1, よろいのきし: 1, かげのきし: 1}
+				when $C(c) then {しりょうのきし: 1, よろいのきし: 1, メイジキメラ: 1, かげのきし: 1, メタルスライム: 1}
+				when $C(d) then {よろいのきし: 1, メイジキメラ: 1, かげのきし: 1, キラーリカント: 1, スターキメラ: 1}
+				when $C(e) then {キラーリカント: 1, ドラゴン: 1, スターキメラ: 2, だいまどう: 1}
+				else {スライム: 3, スライムベス: 2} -- 届かないはずだが
+			generateMonster lume.weightedchoice monsters
+		.traps[] = with {}
+			.check = (player)->
+				rate = switch map_overworld[player.y][player.x]
+					when 0x23, $C(B) then 0.20 -- 山　砂漠
+					when 0x22, 0x25, 0x2d then 0.15 -- 森, 毒　バリア
+					else 0.1 -- 草原
+				(math.random() < rate) --and not((g_player.せいすいcount >= 0 or g_player.トヘロスcount >= 0) and g_player\守備力() > monster.守備力)
+			.talk = =>
+				monster = _monster()
+				if (g_player.せいすいcount >= 0 or g_player.トヘロスcount >= 0) and g_player\守備力() > monster.守備力 then return
+				Battle(monster)\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+		if lume.find(g_player.flags, 'にじのしずくをつかった')
+			.bg.data[57][77] = 0x29
+			.bg\set(.bg.data)
+		BGM Field.BGM
+
+save = ->
+	love.filesystem.write(PROJECTNAME..'.save', lume.serialize({player: lume.pick(g_player, 'name', 'x', 'y', 'level', 'hp', 'mp', 'maxhp', 'maxmp', 'spells', 'items', 'gold', '経験値', 'ちから', '素早さ', '武器', '鎧', '盾', 'flags', 'トヘロスcount', 'せいすいcount', 'レミーラcount'), }))
+
+export build_load = ->
+	with build()
+		savedata = if love.filesystem.getInfo(PROJECTNAME..'.save') then lume.deserialize(love.filesystem.read(PROJECTNAME..'.save') or '{}') else {} -- load
+		if not savedata.player then Scene.current = require('DQ1_玉座').build_opening()
+		for key in *{'name', 'x', 'y', 'level', 'hp', 'mp', 'maxhp', 'maxmp', 'spells', 'items', 'gold', '経験値', 'ちから', '素早さ', '武器', '鎧', '盾', 'flags', 'トヘロスcount', 'せいすいcount', 'レミーラcount'}
+			g_player[key] = savedata.player[key]
+
+
+export build_atラダトーム城 = ->
+	with build()
+		g_player.x, g_player.y = 54, 49
+
+export build_atラダトーム城_最弱 = ->
+	with build()
+		g_player.x, g_player.y = 54, 50
+		g_player.level = 1
+		{経験値: g_player.経験値, ちから: g_player.ちから, 素早さ: g_player.素早さ, maxhp: g_player.maxhp, maxmp: g_player.maxmp} = LevelUps[1]
+		g_player.hp, g_player.mp, g_player.gold  = g_player.maxhp, g_player.maxmp, 0
+		g_player.items, g_player.spells, g_player.flags, g_player.武器, g_player.鎧, g_player.盾 = {}, {}, {}, nil, nil, nil
+
+export build_fromルーラ = ->
+	with build()
+		g_player.x, g_player.y = 54, 50
+		save()
+
+export build_atラダトーム町 = ->
+	with build()
+		g_player.x, g_player.y = 59, 48
+		save()
+
+export build_atロトの洞窟 = ->
+	with build()
+		g_player.x, g_player.y = 37, 20
+		save()
+
+export build_atガライの町 = ->
+	with build()
+		g_player.x, g_player.y = 10, 11
+		save()
+
+export build_atマイラの村 = ->
+	with build()
+		g_player.x, g_player.y = 121, 19
+		save()
+
+export build_at沼地の洞窟ラダトーム側 = ->
+	with build()
+		g_player.x, g_player.y = 121, 51
+		save()
+
+export build_at沼地の洞窟リムルダール側 = ->
+	with build()
+		g_player.x, g_player.y = 121, 56
+		save()
+
+export build_atリムルダールの町 = ->
+	with build()
+		g_player.x, g_player.y = 120, 79
+		save()
+
+export build_at聖なる祠 = ->
+	with build()
+		g_player.x, g_player.y = 124, 117
+		save()
+
+export build_at雨の祠 = ->
+	with build()
+		g_player.x, g_player.y = 98, 9
+		save()
+
+export build_at岩山の洞窟 = ->
+	with build()
+		g_player.x, g_player.y = 40, 65
+		save()
+
+export build_atドムドーラの町 = ->
+	with build()
+		g_player.x, g_player.y = 35, 99
+		save()
+
+export build_atメルキドの町 = ->
+	with build()
+		g_player.x, g_player.y = 83, 111
+		save()
+
+export build_atりゅうおうの城 = ->
+	with build()
+		g_player.x, g_player.y = 59, 54
+		save()
+

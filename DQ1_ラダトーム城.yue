@@ -1,0 +1,340 @@
+import 'macros' as {$}
+import 'utl' as :L, :pos_in_box, :play, :toZenkaku
+import 'lib.lume'
+import 'ui' as :Scene, :BGM
+import 'main' as :Castle, :Charactor, :g_player, :MessageBoxRetro, :SelectBoxRetro, :扉, :宝箱, :かぎ屋
+local *
+
+
+mapdata = $to2d[[
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!CCCCCCC!!!!!!!!CCCCCCC!CCC!"!!!!!!!!!!
+!!!!!!!!C'''''C!"!""!"!C'''''C!C'C!!!!!!!!!!!!
+!!!!!!!!C'''''C!!!!!!!!C'''''C!CAC!!!!!!!!!!!!
+!!!!!!!!C''C''CCCC''CCCC''C''C!!!""!!!!!!!!!!!
+!!!!!!!!C''''''''''''''''''''C!"""!!!!!!!!!!!!
+!!!!!!!!C'''''CCCCCCCCCC'''''C!!!!!!!!!!!!!!!!
+!!!!!!!!CCCCC'C''''''''CCC'CCCCC'CCC!!!!!!!!!!
+!!!!!!!!C'''C'C3'''''C'C'''''''''''C!!!!!!!!!!
+!!!!!!!!C'''''C''''''''C'''''''''''C!!!!!!!!!!
+!!!!!!!!C'''C'CCC''''CCCCCCCCCCCC''C!!!!!!!!!!
+!!!!!!!!CCCCC'C""''''""C''C''C''C''C!!!!!!!!!!
+!!!!!!!!C'''C'C""''''""C''C''C''C''C!!!!!!!!!!
+!!!!!!!!C'''C'C"!''''!"C'''''''''''C!!!!!!!!!!
+!!!!!!!!C'''''C!!''''!!C'''''''''''C!!!!!!!!!!
+!!!!!!!!C'''C'C!!''''!!C''C''C''C''C!!!!!!!!!!
+!!!!!!!!C'''C'C!''''''!C''C''C''C''C!!!!!!!!!!
+!!!!!!!!CCCCC'C!'PPPP'!CCCCCCCCCC'CC!!!!!!!!!!
+!!!!!!!!C''''''''P--P''''''''C'''''C!!!!!!!!!!
+!!!!!!!!C''''''''P--P''''''''C-----C!!!!!!!!!!
+!!!!!!!!CCC''CCC'PPPP'CC'''''C-----C!!!!!!!!!!
+!!!!!!!!C''''''C''''''C''''''C'''''C!!!!!!!!!!
+!!!!!!!!C''''''CC''''CCCCCC''C'''''C!!!!!!!!!!
+!!!!!!!!C''C''''C''''C'''''''CCCCCCCP!!!!!!!!!
+!!!!!!!!C'''''''C''''C'''''''CPPPPPPP!!!!!!!!!
+!!!!!!!!C'PP''C'C''''C''CCCCCCPPPPPPP!!!!!!!!!
+!!!!!!!!CPPPP'''C''''C''C''C'CPPPPPPP!!!!!!!!!
+!!!!!!!!CPPPP'''CC''CC'''''A'CPPPPPPP!!!!!!!!!
+!!!!!!!!CPPPPP''C''''C''C''C'CPPPPPPP!!!!!!!!!
+!!!!!!!!CCCCCCCCCC''CCCCCCCCCCPPPPPPP!!!!!!!!!
+!!!!!!!!PP!!!!!!!!''!!!!!!!PPPPPPPPPP4!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!]]
+
+
+
+build = ->
+	with Castle(mapdata)
+		.traps[] = with {}
+			.check = (player)->
+				not pos_in_box({player.x, player.y}, {8,9,30,30})
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atラダトーム城()
+		.traps[] = with {15, 16}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_玉座').build_fromDownstair()
+		.charactors[] = with Charactor(16,15,{0x34,0x35}) -- 兵士
+			.talk = => MessageBoxRetro({ L"＊「ふっかつのじゅもんが　あれば\n　　それをきいたときの　じょうたいで\n　　よみがえることが　できるだろう。🔻" })\attach()
+		.charactors[] = with Charactor(16,17,{0x34,0x35}) -- 兵士
+			.talk = => MessageBoxRetro({ L"＊「たびをいちど　やめたいときは\n　　おうにあい　ふっかつのじゅもんを\n　　きいておくことだな。🔻" })\attach()
+		.charactors[] = with Charactor(19,21,{0x40,0x41}) -- 男の子
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「ここ　ラダトームは　そのむかし\n　　らくえん　でした。\n　　それをまものたちが…🔻" })\attach()
+		.charactors[] = with Charactor(19,23,{0x3c,0x3d}) -- 女の子
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => 
+				if not lume.find(g_player.flags, L'ローラ姫を救出した') and not lume.find(g_player.items, L'おうじょのあい')
+					MessageBoxRetro({ L"＊「ああ　ローラひめは\n　　いったい　どこに…🔻" })\attach()
+				else
+					MessageBoxRetro({ L"＊「ひめを　たすけだしてくれて\n　　ありがとうごさいます。🔻" })\attach()
+		.charactors[] = with Charactor(23,29,{0x34,0x35}) -- 兵士
+			.talk = => MessageBoxRetro({ L"＊「ああ　ローラひめは\nいったい　どこに…🔻" })\attach()
+		.charactors[] = with Charactor(27,28,{0x34,0x35}) -- 兵士
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「どうくつに　はいるときは\n　　たいまつを　もってゆけよ。🔻" })\attach()
+		.charactors[] = with Charactor(28,35,{0x3a,0x3b}) -- 神官
+			.talk = => MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
+				coroutine.yield 1, L('＊「おお　カミよ！\n　　ふるい　いいつたえの　ゆうしゃ\n　　%sに　ひかり　あれ！🔻')\format(g_player.name)
+				Scene.current.overlapping_color = {1,1,1,1}
+				for a=1,0,-0.05
+					Scene.current.overlapping_color[4] = a
+					coroutine.yield 1
+				Scene.current.overlapping_color = {0,0,0,0}
+				nil
+			)})\attach()
+		.charactors[] = with Charactor(10,33,{0x3e,0x3f}) -- 商人
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「わたしたちは　たびの　しょうにん\n　　です。おおくのなかまが\n　　まものたちに　ころされました。🔻" })\attach()
+		.charactors[] = with Charactor(12,35,{0x3e,0x3f}) -- 商人
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「うわさでは　まものたちに\n　　ほろぼされた　まちも\n　　あるらしいです。🔻" })\attach()
+		.charactors[] = 扉(12, 22, 'ラダトーム城宝物庫の扉')
+		.charactors[] = with Charactor(10,22,{0x34,0x35}) -- 兵士
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「まことの　ゆうしゃなら\n　　ぬすみなど　せぬはずだ。🔻"})\attach()
+		.charactors[] = 宝箱(9,22, math.random(13, 17))
+		.charactors[] = 宝箱(10,23, math.random(13, 17))
+		.charactors[] = 宝箱(11,24, math.random(15, 23))
+		.charactors[] = 宝箱(9,24, math.random(15, 22))
+		.charactors[] = with Charactor(10,17,{0x40,0x41}) -- 男の子
+			.talk = => MessageBoxRetro({ L"＊「まものたちと　たたかって\n　　けいけんを　つんでください。🔻" , L'\n＊「そうすれば　ゆうしゃとしての\n　　レベルが　つぎつぎとあがり\n　　つよくなってゆくでしょう。🔻'})\attach()
+		.charactors[] = with Charactor(27,12,{0x34,0x35}) -- 兵士
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「とびらを　あけるには\n　　カギが　ひつようだ。🔻"})\attach()
+		.charactors[] = 扉(26, 15, 'ラダトーム東エリアへの扉')
+		.charactors[] = with かぎ屋(32, 10, 85)
+			.chipids = {0x3e, 0x3f}
+		.charactors[] = with Charactor(35, 14, {0x3c, 0x3d})
+			.talk = => MessageBoxRetro({ L"＊「あめと　たいようが　あわさるとき\n　　にじの　はしが　できる。🔻\n＊「ふるい　いいつたえ　ですわ。🔻"})\attach()
+		.traps[] = with {37, 38}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_地下室()
+		.charactors[] = with Charactor(31, 20, {0x38, 0x39}) -- 冒険者
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「わたしは　ちかしつを\n　　さがしている。　おしろの\n　　どこかに　あるらしいが…🔻" })\attach()
+		.charactors[] = with Charactor(24, 20, {0x3a, 0x3b}) -- 老人
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「ゆうしゃのため　いのりましょう。🔻", L'\n＊「ひかりが　そなたと　ともに\n　　ありますように…🔻' })\attach()
+		.charactors[] = with Charactor(34, 24, {0x36, 0x37}) -- 兵士 
+			.talk = => MessageBoxRetro({ L"＊「たいりょくに　じしんが\n　　あるなら　はいるがよい。🔻" })\attach()
+		.charactors[] = with Charactor(32, 30, {0x38, 0x39}) -- 冒険者?
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「ガライのはかは　ガライのまちに。\n　　まちに　はいり　くらやみのかべを\n　　おすがよい。🔻" })\attach() -- todo セリフ
+		.charactors[] = with Charactor(17,36,{0x34,0x35}) -- 兵士
+			.talk = => MessageBoxRetro({ L"＊「ラダトームじょうに　ようこそ！🔻" })\attach()
+		.charactors[] = with Charactor(20,36,{0x34,0x35}) -- 兵士
+			.talk = => MessageBoxRetro({ L"＊「ラダトームじょうに　ようこそ！🔻" })\attach()
+		.traps[] = with {}
+			.check = (player)-> player.x == 18 and player.y == 36 and lume.find(player.flags, L'呪い')
+			.talk = => MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
+				coroutine.yield 1, L"＊「のろわれしものよ　　でてゆけ！🔻"
+				Scene.current\detach()
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atラダトーム城()
+				nil
+			)})\attach()
+		.traps[] = with {}
+			.check = (player)-> player.x == 19 and player.y == 36 and lume.find(player.flags, L'呪い')
+			.talk = => MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
+				coroutine.yield 1, L"＊「のろわれしものよ　　でてゆけ！🔻"
+				Scene.current\detach()
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atラダトーム城()
+				nil
+			)})\attach()
+
+export build_at城門 = ->
+	with build()
+		g_player.x, g_player.y = 18, 38
+		BGM Castle.BGM
+
+export build_from玉座 = ->
+	with build()
+		g_player.x, g_player.y = 15, 16
+
+export build_from地下室 = ->
+	with build()
+		g_player.x, g_player.y = 31, 33
+
+
+
+mapdata_basement = $to2d[[
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCC''''''''CCCCCCCCCC
+CCCCCCCCC'C''''''C'CCCCCCCCC
+CCCCCCCCC'''CCCC'''CCCCCCCCC
+CCCCCCCCC'''C''C'''CCCCCCCCC
+CCCCCCCCC3''C''C'''CCCCCCCCC
+CCCCCCCCC'''C''C'''CCCCCCCCC
+CCCCCCCCC''''''''''CCCCCCCCC
+CCCCCCCCC'C''''''C'CCCCCCCCC
+CCCCCCCCCC''''''''CCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCC]]
+
+
+
+export build_地下室 = ->
+	with Castle(mapdata_basement)
+		.traps[] = with {9, 13}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current = build_from地下室()
+		.charactors[] = with Charactor(13, 14,{0x3a,0x3b}) -- todo 取ったあとにセリフの変化は？
+			.talk = => MessageBoxRetro({
+				L"＊「わしは　まっておった。\n　　そなたのような　わかものが\n　　あらわれることを…🔻\n＊「さあ　たからのはこを\n　　とるがよい。🔻"})\attach()
+		if not lume.find(g_player.items, L'たいようのいし')
+			.charactors[] = 宝箱(13, 13, L'たいようのいし')
+		g_player.x, g_player.y = 9, 13
+		-- BGM Castle.BGM
+		
+
+-----------------------------------
+export build_ending = ->
+	with Castle(mapdata)
+		.traps[] = with {}
+			.check = (player)->
+				not pos_in_box({player.x, player.y}, {8,9,30,30})
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atラダトーム城()
+		.traps[] = with {15, 16}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_玉座').build_fromDownstair()
+		.charactors[] = with Charactor(19,16,{0x30}) -- おうさま
+			.talk = => MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
+				coroutine.yield 1, L('＊「おお！　%s！\n　　すべては　ふるい　いいつたえの\n　　ままで　あった！🔻')\format(g_player.name)
+				coroutine.yield 1, L('\n＊「すなわち　そなたこそは\n　　ゆうしゃロトの　ちをひくもの！🔻')
+				coroutine.yield 1, L('\n＊「そなたこそ　このせかいを\n　　おさめるに　ふさわしい　おかた\n　　なのじゃ！🔻')
+				coroutine.yield 1, L('\n＊「わしに　かわって\n　　このくにを　おさめてくれるな？🔻')
+				coroutine.yield 1, L('\nしかし　%sは　いいました。🔻')\format(g_player.name)
+				coroutine.yield 1, L('\n＊「いいえ。わたしの　おさめる\n　　くにが　あるなら　それは\n　　わたしじしんで　さがしたいのです🔻')
+				l = Charactor(15, 16, {0x32})
+				Scene.current.parent.charactors[] = l
+				for x = 15, 18, 0.05
+					l.x = x
+					coroutine.yield 1
+				coroutine.yield 1, L('\nローラ「まってくださいませ！🔻')
+				coroutine.yield 1, L('\nローラ「その　あなたの　たびに\n　　　　ローラも\n　　　　おともしとうございます。🔻')
+				sb = SelectBoxRetro({L'はい', L'いいえ'})
+				repeat
+					coroutine.yield 1, L('\nローラ「このローラも　つれてって\n　　　　くださいますわね？')
+					sb.index = 1
+					coroutine.yield 1, sb\attach()
+				until sb.index == 1
+				coroutine.yield 1, L('\nローラ「うれしゅうごさいます。ぽっ🔻')
+				coroutine.yield 1, L('\n　%sの\n　　　あらたなたびが　はじまる。🔻')\format(g_player.name)
+				coroutine.yield 1, Scene.current.parent\blackout -> Scene.current = require('main').Title()
+				nil
+			)})\attach()
+		.charactors[] = with Charactor(17,18,{0x37}) -- 兵士
+			.talk = => MessageBoxRetro({ L'＊「さあ　はやく　おうさまのもとへ！🔻' })\attach()
+		.charactors[] = with Charactor(20,18,{0x36}) -- 兵士
+			.talk = => MessageBoxRetro({ L'＊「さあ　はやく　おうさまのもとへ！🔻' })\attach()
+		.charactors[] = with Charactor(17,20,{0x37}) -- 兵士
+			.talk = => MessageBoxRetro({ L'＊「さあ　はやく　おうさまのもとへ！🔻' })\attach()
+		.charactors[] = with Charactor(20,20,{0x36}) -- 兵士
+			.talk = => MessageBoxRetro({ L'＊「さあ　はやく　おうさまのもとへ！🔻' })\attach()
+		.charactors[] = with Charactor(17,22,{0x37}) -- 兵士
+			.talk = => MessageBoxRetro({ L'＊「さあ　はやく　おうさまのもとへ！🔻' })\attach()
+		.charactors[] = with Charactor(20,22,{0x36}) -- 兵士
+			.talk = => MessageBoxRetro({ L'＊「さあ　はやく　おうさまのもとへ！🔻' })\attach()
+		-- .charactors[] = with Charactor(23,29,{0x34,0x35}) -- 兵士
+		-- 	.talk = => MessageBoxRetro({ L"＊「ああ　ローラひめは\nいったい　どこに…🔻" })\attach()
+		-- .charactors[] = with Charactor(27,28,{0x34,0x35}) -- 兵士
+		-- 	.update = coroutine.wrap(._update_randomwalk)
+		-- 	.talk = => MessageBoxRetro({ L"＊「どうくつに　はいるときは\n　　たいまつを　もってゆけよ。🔻" })\attach()
+		-- .charactors[] = with Charactor(28,35,{0x3a,0x3b}) -- 神官
+		-- 	.talk = => MessageBoxRetro({ L"＊「おお　カミよ！\n　　ふるい　いいつたえの　ゆうしゃ\n　　#{g_player.name}に　ひかり　あれ！🔻" })\attach()
+		-- .charactors[] = with Charactor(10,33,{0x3e,0x3f}) -- 商人
+		-- 	.update = coroutine.wrap(._update_randomwalk)
+		-- 	.talk = => MessageBoxRetro({ L"＊「わたしたちは　たびの　しょうにん\n　　です。おおくのなかまが\n　　まものたちに　ころされました。🔻" })\attach()
+		-- .charactors[] = with Charactor(12,35,{0x3e,0x3f}) -- 商人
+		-- 	.update = coroutine.wrap(._update_randomwalk)
+		-- 	.talk = => MessageBoxRetro({ L"＊「うわさでは　まものたちに\n　　ほろぼされた　まちも\n　　あるらしいです。🔻" })\attach()
+		.charactors[] = 扉(12, 22, 'ラダトーム城宝物庫の扉')
+		.charactors[] = 宝箱(9,22, L'やくそう') -- todo 中身
+		.charactors[] = 宝箱(10,23, L'かぎ') -- todo 中身
+		.charactors[] = 宝箱(11,24, L'たいまつ') -- todo 中身
+		.charactors[] = 宝箱(9,24, L'キメラのつばさ') -- todo 中身
+		-- .charactors[] = with Charactor(10,17,{0x40,0x41}) -- 男の子
+		-- 	.talk = => MessageBoxRetro({
+		-- 		L"＊「とびらを　あけるには\n　　カギが　ひつようだ。🔻"})\attach()
+		-- .charactors[] = with Charactor(27,12,{0x34,0x35}) -- 兵士
+		-- 	.update = coroutine.wrap(._update_randomwalk)
+		-- 	.talk = => MessageBoxRetro({
+		-- 		L"＊「どうくつに　はいるときは\n　　たいまつを　もってゆけよ。🔻" })\attach()
+		-- .charactors[] = 扉(26, 15, 'ラダトーム東エリアへの扉')
+		-- .charactors[] = with かぎ屋(32, 10, 85)
+		-- 	.chipids = {0x3e, 0x3f}
+		-- .charactors[] = with Charactor(35, 14, {0x3c, 0x3d})
+		-- 	.talk = => MessageBoxRetro({
+		-- 		L"＊「あめと　たいようが　あわさるとき\n　　にじの　はしが　できる。🔻\n＊「ふるい　いいつたえ　ですわ。🔻"})\attach()
+		.traps[] = with {37, 38}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_地下室()
+		-- .charactors[] = with Charactor(31, 20, {0x38, 0x39}) -- 冒険者
+		-- 	.talk = => MessageBoxRetro({ L"＊「ラダトームじょうに　ようこそ！🔻" })\attach() -- todo セリフ
+		-- .charactors[] = with Charactor(24, 20, {0x3a, 0x3b}) -- 老人
+		-- 	.talk = => MessageBoxRetro({ L"＊「ラダトームじょうに　ようこそ！🔻" })\attach() -- todo セリフ
+		-- .charactors[] = with Charactor(33, 22, {0x36, 0x37}) -- 兵士 
+		-- 	.talk = => MessageBoxRetro({ L"＊「ラダトームじょうに　ようこそ！🔻" })\attach() -- todo セリフ
+		-- .charactors[] = with Charactor(32, 30, {0x38, 0x39}) -- 冒険者?
+		-- 	.talk = => MessageBoxRetro({ L"＊「ラダトームじょうに　ようこそ！🔻" })\attach() -- todo セリフ
+		.charactors[] = with Charactor(17,36,{0x34,0x35}) -- 兵士
+			.talk = => MessageBoxRetro({
+				L"＊「さあ　はやく　おうさまのもとへ！🔻" })\attach()
+		.charactors[] = with Charactor(20,36,{0x34,0x35}) -- 兵士
+			.talk = => MessageBoxRetro({
+				L"＊「さあ　はやく　おうさまのもとへ！🔻" })\attach()
+		.traps[] = with {}
+			.check = (player)-> player.x == 18 and player.y == 36 and lume.find(player.flags, L'呪い')
+			.talk = => MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
+				coroutine.yield 1, L"＊「のろわれしものよ　　でてゆけ！🔻"
+				Scene.current\detach()
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atラダトーム城()
+				nil
+			)})\attach()
+		.traps[] = with {}
+			.check = (player)-> player.x == 19 and player.y == 36 and lume.find(player.flags, L'呪い')
+			.talk = => MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
+				coroutine.yield 1, L"＊「のろわれしものよ　　でてゆけ！🔻"
+				Scene.current\detach()
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atラダトーム城()
+				nil
+			)})\attach()
+		g_player.x, g_player.y = 18, 38
+		BGM Castle.BGM

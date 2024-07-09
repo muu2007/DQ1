@@ -1,0 +1,125 @@
+import 'macros' as {$}
+import 'utl' as :L, :play--, :toZenkaku
+import 'lib.lume'
+import 'ui' as :Scene, :BGM
+import 'main' as :Dungeon, :Charactor, :g_player, :MessageBoxRetro, :SelectBoxRetro, :Battle, :generateMonster, :扉, :play_wait
+local *
+
+_ = $mml2ogg([[
+Tempo(92)
+Track(1) q100 @8 o6 l16 >c8.<agfe8d4　b-8.ged c+4 a8　>c2.
+Track(2) q100 @8 o5 l8 r>c<a ra-f　r>d<b- rl16egbe　a>cec<a>c<a4.
+Track(3) v80q100 @8 o4 l8 fa>c< g+bg+　gb-g c+>c+<c+　fa>c<afc< f4.
+]], ローラ姫救出, 5.87) -- 60/92 *9
+
+mapdata = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEECCCCCCCCEEEEEEEEEE
+EEEEEEEEC3'''''CEEEEEEEEEE
+EEEEEEEEC'CC'CCCEEEEEEEEEE
+EEEEEEEEC'C''C'CEEEEEEEEEE
+EEEEEEEEC'CC'''CEEEEEEEEEE
+EEEEEEEEC''''C'CEEEEEEEEEE
+EEEEEEEEC'C'CC'CEEEEEEEEEE
+EEEEEEEEC''CC''CEEEEEEEEEE
+EEEEEEEEC'CC'''CEEEEEEEEEE
+EEEEEEEEC''''C'CEEEEEEEEEE
+EEEEEEEEC'C'CC'CEEEEEEEEEE
+EEEEEEEEC'C''''CEEEEEEEEEE
+EEEEEEEEC'C''C'CEEEEEEEEEE
+EEEEEEEEC'C'CC'CEEEEEEEEEE
+EEEEEEEEC'C''''CEEEEEEEEEE
+EEEEEEEEC'CCC'CCEEEEEEEEEE
+EEEEEEEEC'C''''CEEEEEEEEEE
+EEEEEEEEC'C'CCCCEEEEEEEEEE
+EEEEEEEEC'C'C''CEEEEEEEEEE
+EEEEEEEEC'C'C''CEEEEEEEEEE
+EEEEEEEEC'C'C''CEEEEEEEEEE
+EEEEEEEEC'C'CC'CEEEEEEEEEE
+EEEEEEEEC'C''''CEEEEEEEEEE
+EEEEEEEEC'CCCCCCEEEEEEEEEE
+EEEEEEEEC''''C'CEEEEEEEEEE
+EEEEEEEEC'CC'C'CEEEEEEEEEE
+EEEEEEEEC''C'''CEEEEEEEEEE
+EEEEEEEECC'''CCCEEEEEEEEEE
+EEEEEEEECCCC'''CEEEEEEEEEE
+EEEEEEEEC''C'C'CEEEEEEEEEE
+EEEEEEEEC3'''C'CEEEEEEEEEE
+EEEEEEEECCCCCCCCEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+
+build = ->
+	with Dungeon(mapdata)
+		.traps[] = with {9, 9}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_at沼地の洞窟ラダトーム側()
+		.traps[] = with {9, 38}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_at沼地の洞窟リムルダール側()
+		.traps[] = with {13, 23}
+			.talk = =>
+				if not lume.find(g_player.flags, L'沼地の洞窟のドラゴンをたおした')
+					with b = Battle(generateMonster 'ドラゴン')
+						.detach = =>
+							if .monster.hp <= 0 then g_player.flags[] = L'沼地の洞窟のドラゴンをたおした'
+							else g_player.y = 22 -- 逃げたとき１マス下がる
+							Battle.__base.detach(b)
+						\attach()
+		.charactors[] = 扉(14, 29, '沼地の洞窟の牢屋の扉')
+		if not lume.find(g_player.flags, L'ローラ姫を救出した')
+			.charactors[] = with Charactor(14,27,{0x32}) -- ローラ姫
+				.talk = => MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
+					coroutine.yield 1, L'ローラ「ああ！　たすけだしてくださる\n　　　　かたが　ほんとうにいたなんて\n　　　　まだ　しんじられませんわ！🔻'
+					coroutine.yield 1, L'\nローラ「わたしは　ラルス１６せいの\n　　　　むすめ　ローラです。🔻'
+					sb1 = SelectBoxRetro({L'はい', L'いいえ'})
+					repeat
+						coroutine.yield 1, L'\nローラ「わたしを　おしろまで\n　　　　つれてかえってくれますね？'
+						sb1.index = 1
+						coroutine.yield 1, sb1\attach()
+					until sb1.index == 1
+					coroutine.yield 1, L'\nあなたは　ひめを　だきかかえた。'
+					lume.remove(Scene.current.parent.charactors, @)
+					g_player.chipids = {0x2e, 0x2f}
+					g_player.flags[] = L'ローラ姫を救出した' -- おうじょのあいまでのつなぎ
+					BGM()
+					play_wait'assets/sounds/mml2ogg/ローラ姫救出.ogg'
+					BGM Dungeon.BGM
+					coroutine.yield 1, L'\nローラ「うれしゅうごさいます。ぽっ🔻'
+					nil
+				)})\attach()
+		_monster = -> generateMonster lume.weightedchoice {ゴースト: 1, まほうつかい: 1, おおさそり: 1, メーダ: 2}
+		.traps[] = with {}
+			.check = (_)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+		.リレミト = -> Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_at沼地の洞窟ラダトーム側() -- 必ずラダトーム側に出る？
+
+export build_fromラダトーム方面 = ->
+	with build()
+		g_player.x, g_player.y = 9, 9
+		g_player.たいまつ = false
+		BGM Dungeon.BGM
+
+export build_fromリムルダール方面 = ->
+	with build()
+		g_player.x, g_player.y = 9, 38
+		g_player.たいまつ = false
+		BGM Dungeon.BGM
+

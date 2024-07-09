@@ -1,0 +1,161 @@
+import 'macros' as {$}
+import 'utl' as :L, :play--, :toZenkaku
+import 'lib.lume'
+import 'ui' as :Scene, :BGM
+import 'main' as :Dungeon, :g_player, :宝箱, :Battle, :generateMonster
+local *
+
+
+mapdataB1 = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCEEEEEEEEEE
+EEEEEEEEC4'''CCCC''''''CEEEEEEEEEE
+EEEEEEEEC'CC''''''C'CC'CEEEEEEEEEE
+EEEEEEEEC'C'CCCCCCC'C''CEEEEEEEEEE
+EEEEEEEEC'''''''''C'C''CEEEEEEEEEE
+EEEEEEEECCCCC'CCCCC'C''CEEEEEEEEEE
+EEEEEEEEC'''''C4''''C''CEEEEEEEEEE
+EEEEEEEECCC'CC'CCCCCCCCCEEEEEEEEEE
+EEEEEEEEC3''''''''C'''CCEEEEEEEEEE
+EEEEEEEECCC'CCCCC'''C'CCEEEEEEEEEE
+EEEEEEEEC'''''C'''C''''CEEEEEEEEEE
+EEEEEEEEC'CCC'C'C'CCC'CCEEEEEEEEEE
+EEEEEEEEC'''''''C''''''CEEEEEEEEEE
+EEEEEEEEC'C'C'CCC'C''4'CEEEEEEEEEE
+EEEEEEEEC'''''''''C''''CEEEEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+
+-- Fieldクラスに使うもの全部入れてbuildを呼ぶとシーン(シナリオ)を作る
+-- いくつかのbuild_xxxを１ファイルに入れる。全体的に別セリフだったり、小さなマップが合ったり
+build_1B = ->
+	with Dungeon(mapdataB1)
+		.traps[] = with {9, 16}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_at岩山の洞窟()
+		.traps[] = with {9, 9}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB1_1()
+		.traps[] = with {15, 14}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB1_2()
+		.traps[] = with {21, 21}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB1_3()
+		.charactors[] = 宝箱(22, 14, L'やくそう')
+		_monster = -> generateMonster lume.weightedchoice {ゴースト: 1, まほうつかい: 1, おおさそり: 1, メーダ: 2}
+		.traps[] = with {}
+			.check = (_)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+		.リレミト = -> Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_at岩山の洞窟()
+
+export build_from地上 = ->
+	with build_1B()
+		g_player.x, g_player.y = 9, 16
+		g_player.たいまつ = false
+		BGM Dungeon.BGM
+
+build_B1_fromB2_1 = ->
+	with build_1B()
+		g_player.x, g_player.y = 9, 9
+
+build_B1_fromB2_2 = ->
+	with build_1B()
+		g_player.x, g_player.y = 15, 14
+
+build_B1_fromB2_3 = ->
+	with build_1B()
+		g_player.x, g_player.y = 21, 21
+
+
+mapdataB2 = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCEEEEEEEEEE
+EEEEEEEEC3'C'''''''''''CEEEEEEEEEE
+EEEEEEEEC''C'C'C'CC'CC'CEEEEEEEEEE
+EEEEEEEECCC''C'C'C'''C'CEEEEEEEEEE
+EEEEEEEEC'CCC''CCC'''''CEEEEEEEEEE
+EEEEEEEEC'''''C''CC'CCCCEEEEEEEEEE
+EEEEEEEECCCCC'C3'''''''CEEEEEEEEEE
+EEEEEEEEC'''C'C''CC'CC'CEEEEEEEEEE
+EEEEEEEEC'''C'CCCC''C''CEEEEEEEEEE
+EEEEEEEECC'CC'''CC''C''CEEEEEEEEEE
+EEEEEEEEC'''CCC'''''CC'CEEEEEEEEEE
+EEEEEEEEC'CCC'''CCCC'CCCEEEEEEEEEE
+EEEEEEEEC'C'''C'''C''''CEEEEEEEEEE
+EEEEEEEEC'CCCCCCC'C'C3'CEEEEEEEEEE
+EEEEEEEEC'''''''''C''''CEEEEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+build_2B = ->
+	with Dungeon(mapdataB2)
+		.traps[] = with {9, 9}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_fromB2_1()
+		.traps[] = with {15, 14}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_fromB2_2()
+		.traps[] = with {21, 21}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_fromB2_3()
+		.charactors[] = 宝箱(11, 11, L'せんしのゆびわ')
+		.charactors[] = 宝箱(12, 11, L'たいまつ')
+		.charactors[] = 宝箱(10, 15, if not lume.find(g_player.items, 'しのくびかざり') and math.random() < 1/32 then L'しのくびかざり' else math.random(100, 131)) -- 宝箱
+		.charactors[] = 宝箱(19,18,math.random(10, 17))
+		_monster = -> generateMonster lume.weightedchoice {メトロゴースト: 1, ドロル: 1, ドラキーマ: 1, がいこつ: 1, まどうし: 1}
+		.traps[] = with {}
+			.check = (_)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+		.リレミト = -> Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_at岩山の洞窟()
+
+
+build_B2_fromB1_1 = ->
+	with build_2B()
+		g_player.x, g_player.y = 9, 9
+
+build_B2_fromB1_2 = ->
+	with self = build_2B()
+		g_player.x, g_player.y = 15, 14
+
+build_B2_fromB1_3 = ->
+	with self = build_2B()
+		g_player.x, g_player.y = 21, 21

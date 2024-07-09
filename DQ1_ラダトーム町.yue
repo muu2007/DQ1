@@ -1,0 +1,229 @@
+import 'macros' as {$}
+import 'utl' as :L, :pos_in_box, :play--, :toZenkaku
+import 'lib.lume'
+import 'ui' as :Scene, :BGM
+import 'main' as :Town, :g_player, :Charactor, :MessageBoxRetro, :宿屋, :武器屋, :道具屋, :せいすい屋, :扉
+local *
+
+
+_ = $mml2ogg([[
+Tempo(115)
+Track(1) q100 @8 o5 l8 ab->
+cfedc^d<a　b-^^^r^ga　b->edcc<b-gb-　a^b-^>c^de
+f,50<b-16b-16b-,50>d,50f^ed　c,50<a16a16a,50>c,50f^c<b-　a^fag^>f^　efdec^de
+f,50<b-16b-16b-,50>d,50f^ed　c,50<a16a16a,50>c,50f^c<b-　ab-b>dc<b-ag　a^,50g^,50f^,50
+Track(2) q100 @8 v75 o4 l8 r^
+fa>cf<f+a>cd　<gb->dg<f+>d<f>d　<e>c<b->c<<b>geg　f>c<g>c<a>db->c
+d,50<<f16f16f,50b-,50>d^>c<b-　<c,50f16f16f,50a,50>c^r^　<b^>d^<b^>cd　c^d^e^b->c
+d,50<<f16f16f,50b-,50>d^>c<b-　<c,50f16f16f,50a,50>c^r^　<fga-b>cc+def^,50c^,50<a^,50
+]], town, 25.043) --60/115 *4 *12
+
+
+mapdata = $to2d [[
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!CCCCCCCCCCCCC$''$CCCCCCCCCCCCC!!!!!!!!!!
+!!!!!!!!C"""!!!!!!!!$$''$$"""""""""""C!!!!!!!!!!
+!!!!!!!!C""!!!!!!!!!!$''$!!"@@@@@@@@"C!!!!!!!!!!
+!!!!!!!!C"!CCCCC!!!!!!''!!!"@@@@@@@@"C!!!!!!!!!!
+!!!!!!!!C"!C'''C!!!!!!''$!!!@@@@@@@@"C!!!!!!!!!!
+!!!!!!!!C"!C'A'C!!!!!!''$$"!@@@@@@@@"C!!!!!!!!!!
+!!!!!!!!C"!CC'CC!!$$!!''$!"!@'@@@@@@!C!!!!!!!!!!
+!!!!!!!!C"!!!'I!!$$$$!''!!"!!!!"!!"!!C!!!!!!!!!!
+!!!!!!!!C""!!'!!$$"$$!''!!!!!!""""""!C!!!!!!!!!!
+!!!!!!!!C"!!!'!!$"""$$''!!CCCCCCCCC"!C!!!!!!!!!!
+!!!!!!!!C"!!!'!$$$"""$''!!C'''C'''C!!C!!!!!!!!!!
+!!!!!!!!C!!!!'!$$"""$!''!!C'''C'''C!!C!!!!!!!!!!
+!!!!!!!!C""!!'!!$$$$$!''!!CC'CCC'CC!"C!!!!!!!!!!
+!!!!!!!!""!!!'!!!!$$!!''!!!!'!!!'!!!""!!!!!!!!!!
+!!!!!!!!''''''''''''''''''''''''''''''!!!!!!!!!!
+!!!!!!!!''''''''''''''''''''''''''''''!!!!!!!!!!
+!!!!!!!!""!!!!!!'!!!!"!'!!!"!!!!!PPP""!!!!!!!!!!
+!!!!!!!!C""!!!!!'!!!""!'!""""!PPPPPPP"!!!!!!!!!!
+!!!!!!!!C"!!!!!!'!!""!!'"""!!PPPPPPPPP!!!!!!!!!!
+!!!!!!!!C!!!!!CJ'C!!!!!'!"!!PPPPPPPPPP!!!!!!!!!!
+!!!!!!!!C!CCCCCC'CCC!!!'"!!PPPP!!PPPPP!!!!!!!!!!
+!!!!!!!!C!C''C'''A'C!!!'!!PP!!!!!!!PPP!!!!!!!!!!
+!!!!!!!!C!C''C'CCCCC!!!''')!!!!!!!!!!P!!!!!!!!!!
+!!!!!!!!C!C''''''''C!!!!!!P!!@'@@@@"!P!!!!!!!!!!
+!!!!!!!!C!C'CC'CC''C!!!!!PP!!@@@@@@"!P!!!!!!!!!!
+!!!!!!!!C!C''C''C''C!!!!!PPP!@@@@@@!PP!!!!!!!!!!
+!!!!!!!!C!C''C''C''C!!!!!PP!!@@@@@@!"P!!!!!!!!!!
+!!!!!!!!C!CCCCCCCCCC!!!!PPPP!@@@@@@""P!!!!!!!!!!
+!!!!!!!!C!!!!!!!!!!!!!!PPPPP!!!!!PP"PP!!!!!!!!!!
+!!!!!!!!CCCCCCCCCCCCCCCCCCCCPPPPPPPPPP!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!]]
+
+
+mapdata道具屋 = $to2d [[
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEE%EEEEEEEEEEE
+EEEEEEEEC'CCCCEEEEEEE
+EEEEEEEEC''C'CEEEEEEE
+EEEEEEEEC''A'CEEEEEEE
+EEEEEEEEC''C'CEEEEEEE
+EEEEEEEECCCCCCEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEE]]
+
+mapdataせいすい屋 = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEECCCCCCCCCEEEEEEE
+EEEEEEEEC'''C'PPCEEEEEEE
+EEEEEEEEC'''A'PPCEEEEEEE
+EEEEEEEEC'''C'PPCEEEEEEE
+EEEEEEEEC'CCCCCCCEEEEEEE
+EEEEEEEEE%EEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEE]]
+
+
+build = ->
+	with Town(mapdata)
+		.traps[] = with {}
+			.check = (player)-> not pos_in_box({player.x, player.y}, {8,9,30,30})
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout(->Scene.current = require('DQ1_全体マップ').build_atラダトーム町())
+		.charactors[] = with Charactor(9,22,{0x40,0x41}) -- 男の子
+			.talk = => MessageBoxRetro({ L"＊「ラダトームのまちへ　ようこそ。🔻"})\attach()
+		.charactors[] = with Charactor(12,16,{0x3c,0x3d}) -- 女の子
+			.talk = => MessageBoxRetro({ L"＊「いらっしゃいませ。\n　　なかにすすみ　つくえ　ごしに\n　　はなしかけてくださいな。🔻" })\attach()
+		.charactors[] = 武器屋(13, 13, {{L"たけざお", 10}, {L"こんぼう", 60}, {L"どうのつるぎ", 180}, {L"ぬののふく", 20}, {L"かわのふく", 70}, {L"かわのたて", 90} })
+		.charactors[] = with Charactor(19,19,{0x40,0x41}) -- 男の子
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「このまちの　ずっと　きたにいき\n　　うみべを　にしにあるくと\n　　ガライのまちが　あるそうです。🔻"})\attach()
+		.charactors[] = with Charactor(23,16,{0x3e,0x3f}) -- 商人
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「どうか　まものたちを\n　　たおして　ください。🔻"})\attach()
+		.charactors[] = with Charactor(17,13,{0x3a,0x3b}) -- 老人
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「どくのぬまちに　きをつけなされ。\n　　ぬまちを　あるくときは\n　　たいりょくに　きをつかうようにな🔻"})\attach()
+		.charactors[] = 扉(29, 15, 'ラダトーム町せいすい屋の扉')
+		.traps[] = with {29, 15}
+			.talk = => Scene.current = build_せいすい屋()
+		.charactors[] = with Charactor(36,10,{0x38,0x39}) -- 戦士
+			.talk = => MessageBoxRetro({ L"＊「はしに　きをつけろ！🔻\n", "＊「はしをわたって　とおくにいくほど\n　　おそろしい　まものたちが\n　　あらわれるだろう。🔻"})\attach()
+		.charactors[] = with Charactor(14,26,{0x38,0x39}) -- 戦士
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「おおくのゆうしゃが\n　　まちから　とおくに　たびにでて\n　　そして　しんだ。🔻\n", L("＊「ゆうしゃ　%sよ\n　　おまえを　しなせたくないものだな🔻")\format(g_player.name)})\attach()
+		.charactors[] = with Charactor(24,28,{0x38,0x39}) -- 戦士
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「おまえがロトのちをひくもの？\n　　なにかしょうこがあるのか？🔻"})\attach()
+		.charactors[] = with Charactor(23,32,{0x3c,0x3d}) -- 女性
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「いーえ　わたしは\n　　ローラひめじゃないわ。🔻"})\attach()
+		.charactors[] = 宿屋(18, 30, 6)
+		.charactors[] = with Charactor(18,35,{0x34,0x35}) -- 戦士
+			.talk = => MessageBoxRetro({ L"＊「おうさまに　つたえてくれ\n　　ローラひめの　そうさくたいは\n　　ぜんめつしたと…🔻\n", L"＊「わたしも　もう　だめだ…\n　　ぐぶ…🔻"})\attach()
+		.charactors[] = with Charactor(13,32,{0x11}) -- 扉
+			.talk = =>
+		.charactors[] = with Charactor(12,35,{0x38,0x39}) -- 戦士
+			.talk = => MessageBoxRetro({ L"＊「おまえがロトのちをひくもの？\n　　なにかしょうこがあるのか？🔻"})\attach() --[ ] todo:まとめられないか？
+		.charactors[] = with Charactor(28,32,{0x40,0x41}) -- 男の子
+			.talk = => MessageBoxRetro({ L"＊「そこの　へこんだことろから\n　　なかへ　すすんでください。🔻"})\attach()
+		.charactors[] = with Charactor(31,30,{0x40,0x41}) -- 男の子
+			.talk = => MessageBoxRetro({ L"＊「ラダトームのおしろのみなみから\n　　うみのむこうに　おしろが\n　　みえるでしょう。🔻\n"
+				L"＊「りゅうおうは　そのしろに\n　　いるとか…。おお　こわい…。🔻\n"})\attach()
+		.traps[] = with {30, 32}
+			.talk = => Scene.current = build_道具屋()
+		.charactors[] = with Charactor(32,19,{0x3a,0x3b}) -- 呪いを解く老人
+			.talk = =>
+				if not lume.find(g_player.flags, L'呪い')
+					MessageBoxRetro({ L"＊「もし　そなたが　のろわれたなら\n　　ここに　くるがよい。🔻" })\attach()
+				else
+					lume.remove(g_player.flags, L'呪い')
+					MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
+						coroutine.yield 1, L"＊「のろいを　といて　しんぜよう。"
+						Scene.current.overlapping_color = {1,1,1,0.6}
+						s = play'assets/sounds/mml2ogg/呪文.ogg'
+						while s\isPlaying()
+							Scene.current.overlapping_color[4] = lume.smooth(0, 0.6, 1 - s\tell() / s\getDuration())
+							coroutine.yield 1
+						Scene.current.overlapping_color = {0,0,0,0}
+						coroutine.yield 1, "🔻"
+						nil
+					)})\attach()
+		.charactors[] = with Charactor(28,19,{0x40,0x41}) -- 男の子
+			.talk = => MessageBoxRetro({ L"＊「うわさでは　どこかに　まほうの\n　　カギをうっている　まちが\n　　あるらしいですよ。🔻" })\attach()
+		.charactors[] = with Charactor(31,24,{0x34,0x35}) -- 兵士
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「たたかいで　けいけんを　つみ\n　　レベルが　あがったときは\n　　おうさまに　あいに　いけよ。🔻" })\attach()
+
+
+export build_from北口 = ->
+	with build()
+		g_player.x, g_player.y = 23, 9
+		BGM Town.BGM --屋根の有るところに出入りする時はBGMをかけ直さないため、外からのときは手動で掛ける
+
+export build_from西口 = ->
+	with build()
+		g_player.x, g_player.y = 8, 24
+		BGM Town.BGM
+
+export build_from東口 = ->
+	with build()
+		g_player.x, g_player.y = 37, 24
+		BGM Town.BGM
+
+build_道具屋 = ->
+	with Town(mapdata道具屋)
+		.charactors[] = 道具屋(12, 10, {{L"やくそう", 24}, {L"たいまつ", 8}, {L"りゅうのうろこ", 20} })
+		.traps[] = with {9, 7}
+			.talk = => Scene.current = build_from道具屋()
+		g_player.x, g_player.y = 9, 8
+
+build_from道具屋 = ->
+	with build()
+		g_player.x, g_player.y = 30, 31
+
+build_せいすい屋 = ->
+	with Town(mapdataせいすい屋)
+		.charactors[] = せいすい屋(13, 10, 38)
+		.traps[] = with {9, 13}
+			.talk = => Scene.current = build_fromせいすい屋()
+		g_player.x, g_player.y = 9, 12
+
+build_fromせいすい屋 = ->
+	with build()
+		g_player.x, g_player.y = 29, 16

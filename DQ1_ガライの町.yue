@@ -1,0 +1,512 @@
+import 'macros' as {$}
+import 'utl' as :L, :pos_in_box, :play
+import 'lib.lume'
+import 'ui' as :Scene, :BGM
+import 'main' as :Town, :Dungeon, :Charactor, :g_player, :宿屋, :武器屋, :道具屋, :MessageBoxRetro, :Battle, :generateMonster, :扉, :宝箱
+local *
+
+
+mapdata = $to2d [[
+PPPPPPPPCCC'CCCCCCCCC@@@@@@@PPPPPPPPPP
+PPPPPPPP@@@@@@@@@@@@@@@@@@@@PPPPPPPPPP
+PPPPPPPP@@@@@@@@@@@@@@@@@@@@PPPPPPPPPP
+PPPPPPPP@@@@@@@@@@@@@@@@@@@@PPPPPPPPPP
+PPPPPPPP@@@@@@@@@@@@@@@@@@@@PPPPPPPPPP
+PPPPPPPP@@@@@@@@@@@@@@@@@@@@PPPPPPPPPP
+PPPPPPPP@@@@@@@@@@@@@@@@@@@@PPPPPPPPPP
+PPPPPPPP@@@@@@@@@@@@@@@@@@@@PPPPPPPPPP
+PPPPPPPPPC''C'C""""""""@@'@@PPPPPPPPPP
+PPPPPPPPPC''A'C""!'''!"""'""!!!!PPPPPP
+!!!!!!""CC'CCCC"!!'"'!!''''''''')!!!!!
+!!!!!!!!!!'!!!!!'''''!!!!!!!!!!!$PPPPP
+!!!!!!!!'''''''''!'!!!J'CCC"!!!!$$PPPP
+!!!!!!!!"""!'!""!!'I!!C'A'CC!!!!$$PPP!
+!!!!!!!!CCCC'C"$CC'CC!C'CCCC!!!!!$$$!!
+PPPPPPPPPC'''CC$C'A'C!C'C''C!!!!!!$$!!
+PPPPPPPPPCCCCCPCC'''C!C''''C!!!!!$$$!!
+PPPPPPPPPPPPPPPPCCCCCCCCCCCC!!!!!!$!!!
+PPPPPPPPPPPPPPPPPPPPPPPP!!!!!!!!!!!!!!
+PPPPPPPPPPPPPPPPPPPPPPPP!!!!!!!!!!!!!!
+PPPPPPPPPPPPPPPPPPPPPPPP!!!!!!!!!!!!!!
+PPPPPPPPPPPPPPPPPPPPPPPPP!!!!!!!!!!!!!
+PPPPPPPPPPPPPPPPPPPPPPPPPP!!!!!!!!!!!!
+PPPPPPPPPPPPPPPPPPPPPPPPPPP!!!!!!!!!!!
+PPPPPPPPPPPPPPPPPPPPPPPPPPPP!!!!!!!!!!
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPP!!!!!!!!]]
+
+
+mapdata墓場エントランス = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEE%EEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEC''''''''''''CCCCPPPEEEEEEE
+EEEEEEEEC'CCCCC''''''PPPCPCCEEEEEEE
+EEEEEEEEC'C'''C''''''CPPPPPCEEEEEEE
+EEEEEEEEC'CC'CC''''''CPCPCPCEEEEEEE
+EEEEEEEEC''''''''''''''''''CEEEEEEE
+EEEEEEEEC''''''''''''''''''CEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCC'''CEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEECC'CCEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEE%EEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+mapdata墓場通路 = $to2d [[
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!PPC'''''''''''''PPC4!!!!!!!
+!!!!!!!!PPC'$$$$$$$$$$$'')''!!!!!!!
+!!!!!!!!CCC'CCCCCCCCCCCCPCCC!!!!!!!
+!!!!!!!!@@@%@@@@@@@@@@@@@@@@!!!!!!!
+!!!!!!!!@@@@@@@@@@@@@@@@@@@@!!!!!!!
+!!!!!!!!@@@@@@@@@@@@@@@@@@@@!!!!!!!
+!!!!!!!!@@@@@@@@@@@@@@@@@@@@!!!!!!!
+!!!!!!!!@@@@@@@@@@@@@@@@@@@@!!!!!!!
+!!!!!!!!@@@@@@@@@@@@@@@@@@@@!!!!!!!
+!!!!!!!!@@@@@@@@@@@@@@@@@@@@!!!!!!!
+!!!!!!!!@@@@@@@@@@@@@@@@@@@@!!!!!!!
+!!!!!!!!@@@@@@@@@@@@@@@@@@@@!!!!!!!]]
+
+mapdata墓場B1 = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCCCCCCCEEEEEEE
+EEEEEEEEC''''''''C'C'''C''''CCEEEEEEE
+EEEEEEEEC'CCCCCC'''C'''''CC''CEEEEEEE
+EEEEEEEEC'C''''C'C'C'''C'''C'CEEEEEEE
+EEEEEEEEC'C'CC'''C'C'CCCCC'C'CEEEEEEE
+EEEEEEEEC'C''''CCC'CCC'C'C'''CEEEEEEE
+EEEEEEEEC'CCCC'''C'''C'C'C'C'CEEEEEEE
+EEEEEEEEC''''CCCCC'C'C'C'C'C'CEEEEEEE
+EEEEEEEEC'C''C'''''''''''''''CEEEEEEE
+EEEEEEEEC'C'CC'CCC'CCCCC'CCC'CEEEEEEE
+EEEEEEEEC'C'C''''''C'''''C'''CEEEEEEE
+EEEEEEEEC'C'C'C'CC'CCCCC'''''CEEEEEEE
+EEEEEEEEC'C'''C3'''C'''C'CC''CEEEEEEE
+EEEEEEEEC'C'C'C''''C'C'''CC'CCEEEEEEE
+EEEEEEEEC'C'CCCCCC'CCCCC''C''CEEEEEEE
+EEEEEEEEC'C'''C''''''''CCCCC'CEEEEEEE
+EEEEEEEECCCCC'CCCCCC'C'C'C'C'CEEEEEEE
+EEEEEEEEC'''CCC''''''''C'''''CEEEEEEE
+EEEEEEEEC''C'C''C'CCCCCCCCC'CCEEEEEEE
+EEEEEEEEC'4''CCCCCCC'C'''C'''CEEEEEEE
+EEEEEEEEC''''''''''''''C'''C'CEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCCCCCCCEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+mapdata墓場B2 = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCCCEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCCCEEEEEEE
+EEEEEEEECC''''''''''''''CCEEEEEEE
+EEEEEEEECC'4C'CCCCCCC'4'CCEEEEEEE
+EEEEEEEECC'CC'''''''C3''CCEEEEEEE
+EEEEEEEECC''CCCCCCC'CCC'CCEEEEEEE
+EEEEEEEECC''C'''''''''C'CCEEEEEEE
+EEEEEEEECC''C'C'C'C'C'C'CCEEEEEEE
+EEEEEEEECC''C''4''C'C'C'CCEEEEEEE
+EEEEEEEECC''C'C'C'CCCCC'CCEEEEEEE
+EEEEEEEECC''C'''''C'''''CCEEEEEEE
+EEEEEEEECC'CCCCCCCCCCCC'CCEEEEEEE
+EEEEEEEECC'4C''''''''C4'CCEEEEEEE
+EEEEEEEECC''''''''''''''CCEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCCCEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCCCEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+mapdata墓場B3 = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCCCCCCCEEEEEEE
+EEEEEEEEC'''C'''C''''''''C'''CEEEEEEE
+EEEEEEEEC'''C'''''C'C'C3'C'3'CEEEEEEE
+EEEEEEEEC'''C'CCCCC''''''C'''CEEEEEEE
+EEEEEEEEC'CCC'C'C'CCCCCCCCCCCCEEEEEEE
+EEEEEEEEC'C'''C''''CC'''CC'''CEEEEEEE
+EEEEEEEEC'C'CCC'C'4C'''''CCC'CEEEEEEE
+EEEEEEEEC'''C'''CCCC'''''C'C'CEEEEEEE
+EEEEEEEEC'CCC'C'C'C''''''C'C'CEEEEEEE
+EEEEEEEEC'C'C'C'C'C'''''CC'''CEEEEEEE
+EEEEEEEEC'C'C'''C'C4'CCCCC'C'CEEEEEEE
+EEEEEEEEC'C'C'CCC'CCCC'C'''C'CEEEEEEE
+EEEEEEEEC'C'C'C3'''''''C''CC'CEEEEEEE
+EEEEEEEEC'C'C'CCCCCCCCCCC'C''CEEEEEEE
+EEEEEEEEC'C'C'C''''C''''''C3'CEEEEEEE
+EEEEEEEEC'C'''C''C'C'CCC'CCC'CEEEEEEE
+EEEEEEEEC'CC''C''C'C'''''C'''CEEEEEEE
+EEEEEEEEC'C''CCCCC'CCCCC'C'C'CEEEEEEE
+EEEEEEEEC'C3'''''''C'''''C'C'CEEEEEEE
+EEEEEEEEC'CCCCCCCCCCCCCC'CCC'CEEEEEEE
+EEEEEEEEC''''''''''''''''''''CEEEEEEE
+EEEEEEEECCCCCCCCCCCCCCCCCCCCCCEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+mapdata墓場B4 = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEECCCCCCCCCCCCEEEEEEE
+EEEEEEECCCCCC'CCCCCEEEEEEE
+EEEEEEECCCCC'''CCCCEEEEEEE
+EEEEEEECCCC''C''CCCEEEEEEE
+EEEEEEECCC''CCC''CCEEEEEEE
+EEEEEEEC3''CC3''''CEEEEEEE
+EEEEEEECCC''CCC''CCEEEEEEE
+EEEEEEECCCC''C''CCCEEEEEEE
+EEEEEEECCCCC'''CCCCEEEEEEE
+EEEEEEECCCCCC'CCCCCEEEEEEE
+EEEEEEECCCCCCCCCCCCEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+build = ->
+	with Town(mapdata)
+		.traps[] = with {}
+			.check = (player)-> not pos_in_box({player.x, player.y}, {8,8,20,10})
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atガライの町()
+		.charactors[] = with Charactor(10,8,{0x3a,0x3b}) -- 老人
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「ふるい　いいつたえでは　いだいな　ぎんゆうしじん　ガライが　このまちを　つくったそうです。🔻"})\attach()
+		.charactors[] = 道具屋(13, 9, {{L"やくそう", 10}, {L"たいまつ", 8}, {L"りゅうのうろこ", 20} })
+		.charactors[] = with Charactor(10,15,{0x3a,0x3b}) -- 老人
+			.talk = => MessageBoxRetro({ L"＊「うわさでは　ローラひめは\nどこかの　どうくつに　とじこめられたそうじゃ。🔻", L'\nもう　たすけたされたかのう…。🔻'})\attach()
+		.charactors[] = with Charactor(15,15,{0x38,0x39}) -- 戦士
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「おれは　みやおうだ。\nキムこうを　さがしている。🔻"})\attach()
+		.charactors[] = 武器屋(18, 16, {{L'こんぼう', 60}, {L'どうのつるぎ', 180}, {L'てつのおの', 560}, {L'かわのふく', 70}, {L'くさりかたびら', 300}, {L'てつのよろい', 1000}, {L'てつのたて', 800} })
+		.charactors[] = with Charactor(18,8,{0x3c,0x3d}) -- 女の子
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「むかしがたりのまち\n　　ガライへ　ようこそ。🔻" })\attach()
+		.charactors[] = with Charactor(20,9,{0x40,0x41}) -- 男の子
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L"＊「わたしは　きいた！\n　　なんと　ひめを　さらったまものがひがしのほうに　とびさったとか！🔻"})\attach()
+		.charactors[] = 宿屋(25, 13, 25)
+		.charactors[] = 扉(25, 8, 'ガライの墓場エントランスの扉')
+		.traps[] = with {25, 8}
+			.talk = => Scene.current = build_墓場エントランス_from町()
+
+
+export build_from西口 = ->
+	with build()
+		g_player.x, g_player.y = 8, 12
+		BGM('assets/sounds/mml2ogg/town.ogg')
+
+export build_from東口 = ->
+	with build()
+		g_player.x, g_player.y = 27, 10
+		BGM('assets/sounds/mml2ogg/town.ogg')
+
+build_from墓場エントランス = ->
+	with build()
+		g_player.x, g_player.y = 25, 9
+		BGM('assets/sounds/mml2ogg/town.ogg')
+
+-------------------------------
+build_墓場エントランス = ->
+	with Town(mapdata墓場エントランス)
+		.charactors[] = with Charactor(21,13,{0x3a,0x3b}) -- 老人
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L'＊「うわさでは　どこかに\n　　ゆうしゃ　ロトのきていた\n　　よろいが　あるらしい。🔻'})\attach()
+		.charactors[] = with Charactor(19,9,{0x3c,0x3d}) -- 女の子
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L'＊「おとこなんて　きらいよ。\n　　しっしっ。🔻' })\attach()
+		.charactors[] = with Charactor(16,13,{0x40,0x41}) -- 男の子
+			.update = coroutine.wrap(._update_randomwalk)
+			.talk = => MessageBoxRetro({ L'＊「はるか　みなみに　ドムドーラの\n　　まちが　ありました。\n　　いまも　あるのでしょうか……。🔻'})\attach()
+		.charactors[] = 宝箱(16, 11, 630)
+		.charactors[] = 宝箱(16, 10, L'たいまつ')
+		.charactors[] = 宝箱(17, 10, L'どうのつるぎ')
+		.charactors[] = with Charactor(17,11,{0x3e,0x3f}) -- 商人
+			.talk = => MessageBoxRetro({ L"＊「えーい　もってけ！　どろぼう！🔻"})\attach()
+		.charactors[] = with Charactor(11,10,{0x34,0x35}) -- 戦士
+			.talk = => MessageBoxRetro({ L"＊「わたしは　いそがしい\n　　となりのやつに　きいてくれ。🔻"})\attach()
+		.charactors[] = with Charactor(13,10,{0x34,0x35}) -- 戦士
+			.talk = => MessageBoxRetro({ L"＊「わたしは　いそがしい\n　　となりのやつに　きいてくれ。🔻"})\attach()
+		.charactors[] = 扉(12, 11, 'ガライの墓場エントランス内部の小部屋の扉')
+		.traps[] = with {25, 16}
+			.talk = => Scene.current = build_from墓場エントランス()
+		.traps[] = with {11, 7}
+			.talk = => Scene.current = build_墓場通路_fromエントランス()
+	
+build_墓場エントランス_from町 = ->
+	with build_墓場エントランス()
+		g_player.x, g_player.y = 25, 15
+
+build_墓場エントランス_from通路 = ->
+	with build_墓場エントランス()
+		g_player.x, g_player.y = 11, 8
+
+----------------------------------
+build_墓場通路 = ->
+	with Town(mapdata墓場通路)
+		.traps[] = with {}
+			.check = (player)-> not pos_in_box({player.x, player.y}, {8,8,20,4})
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout(->Scene.current = require('DQ1_全体マップ').build_atガライの町())
+		.charactors[] = with Charactor(22,9,{0x3a,0x3b}) -- 老人
+			.talk = => MessageBoxRetro({ L"＊「たてごとは　まものたちを\nよびよせる\nガライのはかに　ちかよるな！🔻"})\attach()
+		.traps[] = with {11, 11}
+			.talk = => Scene.current = build_墓場エントランス_from通路()
+		.traps[] = with {27, 8}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B1_from通路()
+
+build_墓場通路_fromエントランス = ->
+	with build_墓場通路()
+		g_player.x, g_player.y = 11, 10
+
+build_墓場通路_fromB1 = ->
+	with build_墓場通路()
+		g_player.x, g_player.y = 27, 8
+		BGM Town.BGM
+
+--------------------------------------
+class ガライの墓 extends Dungeon
+	リレミト: => Scene.current\blackout -> Scene.current = build_墓場通路_fromB1()
+
+build_墓場B1 = ->
+	with ガライの墓(mapdata墓場B1)
+		.traps[] = with {15, 20} -- 入口
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場通路_fromB1()
+		.traps[] = with {10, 27}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B2_fromB1()
+		.charactors[] = 宝箱(20 ,9, L'やくそう')
+		.charactors[] = 宝箱(21, 9, math.random(5, 20))
+		.charactors[] = 宝箱(22, 9, math.random(6, 13))
+		.charactors[] = 扉(27, 26, 'ガライの墓B1の扉')
+		_monster = -> generateMonster lume.weightedchoice {メトロゴースト: 1, ドロル: 1, ドラキーマ: 1, がいこつ: 1, まどうし: 1}
+		.traps[] = with {}
+			.check = (_)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+
+build_墓場B1_from通路 = ->
+	with build_墓場B1()
+		g_player.x, g_player.y = 15, 20
+		g_player.たいまつ = false
+		BGM Dungeon.BGM
+
+build_墓場B1_fromB2 = ->
+	with build_墓場B1()
+		g_player.x, g_player.y = 10, 27
+
+------------------------------------
+build_墓場B2 = ->
+	with ガライの墓(mapdata墓場B2)
+		.traps[] = with {21, 12}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B1_fromB2()
+		.traps[] = with {11, 11}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B3_fromB2_1()
+		.traps[] = with {22, 11}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B3_fromB2_2()
+		.traps[] = with {15, 16}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B3_fromB2_3()
+		.traps[] = with {11, 20}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B3_fromB2_4()
+		.traps[] = with {22, 20}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B3_fromB2_5()
+		_monster = -> generateMonster lume.weightedchoice {がいこつ: 1, まどうし: 1, てつさそり: 1, リカント: 2}
+		.traps[] = with {}
+			.check = (_)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+
+build_墓場B2_fromB1 = ->
+	with build_墓場B2()
+		g_player.x, g_player.y = 21, 12
+
+build_墓場B2_fromB3_1 = ->
+	with build_墓場B2()
+		g_player.x, g_player.y = 11, 11
+build_墓場B2_fromB3_2 = ->
+	with build_墓場B2()
+		g_player.x, g_player.y = 22, 11
+build_墓場B2_fromB3_3 = ->
+	with build_墓場B2()
+		g_player.x, g_player.y = 15, 16
+build_墓場B2_fromB3_4 = ->
+	with build_墓場B2()
+		g_player.x, g_player.y = 11, 20
+build_墓場B2_fromB3_5 = ->
+	with build_墓場B2()
+		g_player.x, g_player.y = 22, 20
+
+------------------------------------
+build_墓場B3 = ->
+	with ガライの墓(mapdata墓場B3)
+		.traps[] = with {23, 10}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B2_fromB3_1()
+		.traps[] = with {27, 10}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B2_fromB3_2()
+		.traps[] = with {15, 20}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B2_fromB3_3()
+		.traps[] = with {11, 26}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B2_fromB3_4()
+		.traps[] = with {27, 22}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B2_fromB3_5()
+		.traps[] = with {18, 14}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B4_fromB3_1()
+		.traps[] = with {19, 18}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B4_fromB3_2()
+		if not lume.find(g_player.items, L'ぎんのたてごと')
+			.charactors[] = 宝箱(22, 9, L'ぎんのたてごと')
+		.charactors[] = 宝箱(10, 10, L'のろいのベルト') -- todo ２回目以降
+		-- .リレミト = => Scene.current\blackout -> Scene.current = build_墓場通路_fromB1()
+		_monster = -> generateMonster lume.weightedchoice {ヘルゴースト: 1, リカントマルム: 1, メーダロード: 1, ドロルメイジ: 1, しりょうのきし: 1}
+		.traps[] = with {}
+			.check = (_)-> math.random(_monster()) < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+
+build_墓場B3_fromB2_1 = ->
+	with build_墓場B3()
+		g_player.x, g_player.y = 23, 10
+build_墓場B3_fromB2_2 = ->
+	with build_墓場B3()
+		g_player.x, g_player.y = 27, 10
+build_墓場B3_fromB2_3 = ->
+	with build_墓場B3()
+		g_player.x, g_player.y = 15, 20
+build_墓場B3_fromB2_4 = ->
+	with build_墓場B3()
+		g_player.x, g_player.y = 11, 26
+build_墓場B3_fromB2_5 = ->
+	with build_墓場B3()
+		g_player.x, g_player.y = 27, 22
+
+build_墓場B3_fromB4_1 = ->
+	with build_墓場B3()
+		g_player.x, g_player.y = 18, 14
+build_墓場B3_fromB4_2 = ->
+	with build_墓場B3()
+		g_player.x, g_player.y = 19, 18
+
+------------------------------------
+build_墓場B4 = ->
+	with ガライの墓(mapdata墓場B4)
+		.traps[] = with {8, 13}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B3_fromB4_1()
+		.traps[] = with {12, 13}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_墓場B3_fromB4_2()
+		_monster = -> generateMonster lume.weightedchoice {ヘルゴースト: 1, リカントマルム: 1, メーダロード: 1, ドロルメイジ: 1, しりょうのきし: 1}
+		.traps[] = with {}
+			.check = (_)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+
+build_墓場B4_fromB3_1 = ->
+	with build_墓場B4()
+		g_player.x, g_player.y = 8, 13
+
+build_墓場B4_fromB3_2 = ->
+	with build_墓場B4()
+		g_player.x, g_player.y = 12, 13

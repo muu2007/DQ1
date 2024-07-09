@@ -1,0 +1,126 @@
+import 'macros' as {$}
+import 'utl' as :L, :play
+import 'lib.lume'
+import 'ui' as :Scene, :BGM
+import 'main' as :Dungeon, :Charactor, :MessageBoxRetro, :g_player
+local *
+
+
+_ = $mml2ogg([[
+Tempo(110)
+Track(1) q100 @8 o5 l4
+a-b-a-b-　>c+<b-a-b-8a-8　g f8g8b-8a-8g-8f8　ed8e8gc　l32[8 f+e] q50f+4r4q100　[8 fe-]q50f4r4q100
+Track(2) q100 @8 v75 o5 l16
+[8 rb>dg<] [2 rb>c+e<][2 rb>df<]　[4 rfa->c<]　l32[8 <b->c] q50<b-4r4>q100　[8 <ab>]q50a4r4q100
+]], dungeon, 14.4) --60/110 *4 *6
+
+
+mapdata1B = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEECCCCCCCCCCCCEEEEEEE
+EEEEEEEEC3'C''''CC'CEEEEEEE
+EEEEEEEECC'C'CC''''CEEEEEEE
+EEEEEEEEC'''''''CC'CEEEEEEE
+EEEEEEEECC'CCC'CC''CEEEEEEE
+EEEEEEEEC''C'''C''CCEEEEEEE
+EEEEEEEEC'CCCC'''CCCEEEEEEE
+EEEEEEEEC''''''C'C'CEEEEEEE
+EEEEEEEECCC'C'CC'''CEEEEEEE
+EEEEEEEECC'''''C'C'CEEEEEEE
+EEEEEEEECC'C'C'''C4CEEEEEEE
+EEEEEEEECCCCCCCCCCCCEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+mapdata2B = $to2d [[
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEECCCCCCCCCCCCEEEEEEE
+EEEEEEEEC''''''''''CEEEEEEE
+EEEEEEEEC'CCCCC'CCCCEEEEEEE
+EEEEEEEEC'''''C'C''CEEEEEEE
+EEEEEEEECCCC'CC''''CEEEEEEE
+EEEEEEEEC''''C'CC''CEEEEEEE
+EEEEEEEEC'C'CC'C'CCCEEEEEEE
+EEEEEEEEC'CC'C'''''CEEEEEEE
+EEEEEEEEC''''C''CC'CEEEEEEE
+EEEEEEEECC'C''''C''CEEEEEEE
+EEEEEEEEC'''C'''C3'CEEEEEEE
+EEEEEEEECCCCCCCCCCCCEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE
+EEEEEEEEEEEEEEEEEEEEEEEEEEE]]
+
+
+class ロトの洞窟 extends Dungeon
+	リレミト: => Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atロトの洞窟()
+	
+
+build_1B = ->
+	with ロトの洞窟(mapdata1B)
+		.traps[] = with {9, 9}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atロトの洞窟()
+		.traps[] = with {18, 18}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_2B()
+		-- .リレミト = -> Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atロトの洞窟()
+
+
+export build_from地上 = ->
+	with build_1B()
+		g_player.x, g_player.y = 9, 9
+		BGM Dungeon.BGM
+
+build_from2B = ->
+	with build_1B()
+		g_player.x, g_player.y = 18, 18
+
+build_2B = ->
+	with ロトの洞窟(mapdata2B)
+		.traps[] = with {17, 18}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_from2B()
+		.charactors[] = with Charactor(18, 12, {0x10}) -- 宝箱
+			.talk = =>
+				play'assets/DQ1/宝箱.ogg'
+				lume.remove(Scene.current.charactors, @)
+				MessageBoxRetro({L'わたしのなは　ロト　わたしの　ちをひきしものよ。🔻'
+					L'\nラダトームからみえる　まのしまに　わたるには　３つのものが　ひつようだった。🔻'
+					L'\nわたしは　それらを　あつめ　まのしまに　わたり　まおうを　たおした。🔻'
+					L'\nそして　いま　その３つの　しんぴなるものを　３にんの　けんじゃに　たくす。🔻'
+					L'\nかれらの　しそんが　それらを　まもってゆくだろう。🔻'
+					L'\nふたたび　まのしまに　あくが　よみがえったとき　それらを　あつめ　たたかうがよい。🔻'
+				})\attach()
+		-- .リレミト = -> Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atロトの洞窟()
+		g_player.x, g_player.y = 17, 18
+	

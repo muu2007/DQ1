@@ -1,0 +1,656 @@
+import 'macros' as {$}
+import 'utl' as :L, :pos_in_box, :play--, :toZenkaku
+import 'lib.lume'
+import 'ui' as :Scene, :BGM
+import 'main' as :Dungeon, :Dungeon地上, :Charactor, :g_player, :扉, :宝箱, :Battle, :generateMonster, :MessageBoxRetro, :SelectBoxRetro
+local *
+
+
+mapdata1F = $to2d [[
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,CCC,,CCCCCCCCCCC,,,,,,,,,,
+,,,,,,,,,CC'CC,C-----C'''CC,,,,,,,,,
+,,,,,,,,CC'''CCC-AAA-C'C''CC,,,,,,,,
+,,,,,,,,C''C'''C-A'A-C'''''C,,,,,,,,
+,,,,,,,,C'CCCC'C-----CC'CC'C,,,,,,,,
+,,,,,,,,C'C''''C-----C'''C'C,,,,,,,,
+,,,,,,,,C'CC'C'CC'''CC'C'''C,,,,,,,,
+,,,,,,,,C'C'''''CC-CC''''C'C,,,,,,,,
+,,,,,,,,C'CC'CC'C'''CCC'CC'C,,,,,,,,
+,,,,,,,,C'C---C'CC-CCC---C'C,,,,,,,,
+,,,,,,,,C'C-C-C'C'''CC-C-C'C,,,,,,,,
+,,,,,,,,C'C---C'CC-CCC---C'C,,,,,,,,
+,,,,,,,,C'C-C-C'''''CC-C-C'C,,,,,,,,
+,,,,,,,,C'C---CCCCCCCC---C'C,,,,,,,,
+,,,,,,,,C'CC4CC''''''CC4CC'C,,,,,,,,
+,,,,,,,,C''CCC''C''C''CCC''C,,,,,,,,
+,,,,,,,,CC''''''''''''''''CC,,,,,,,,
+,,,,,,,,,CC'''CCC''CCC'''CC,,,,,,,,,
+,,,,,,,,,,CCCCC,C''C,CCCCC,,,,,,,,,,
+,,,,,,,,,,,,,,,,C''C,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,]]
+
+class りゅうおうの城 extends Dungeon
+	リレミト: => Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atりゅうおうの城()
+class りゅうおうの城地上 extends Dungeon地上
+	リレミト: => Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atりゅうおうの城()
+
+build_1F = ->
+	with りゅうおうの城地上(mapdata1F)
+		階段を設定 = ->
+			.bg.data[10][19] = 0x34
+			.bg\set(.bg.data)
+			.traps[] = with {18, 9}
+				.talk = =>
+					play'assets/DQ1/階段.ogg'
+					Scene.current\blackout -> Scene.current = build_B1_from1F_3()
+		.traps[] = with {}
+			.check = (player)-> not pos_in_box({player.x, player.y}, {8,8,20,20})
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atりゅうおうの城()
+		.charactors[] = 扉(12, 16, 'りゅうおうの城1F_1')
+		.traps[] = with {12, 22}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_from1F_1()
+		.charactors[] = 扉(23, 16, 'りゅうおうの城1F_2')
+		.traps[] = with {23, 22}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_from1F_2()
+		if lume.find(g_player.flags, 'りゅうおうの城の階段をみつけた')
+			階段を設定()
+		_monster = -> generateMonster lume.weightedchoice {スターキメラ: 1, キラーリカント: 1, ドラゴン: 1, だいまどう: 1, あくまのきし: 1}
+		.traps[] = with {}
+			.check = (_player)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+		.しらべる = =>
+			if 18 == g_player.x and 9 == g_player.y
+				階段を設定()
+				g_player.flags[] = L'りゅうおうの城の階段をみつけた'
+				'かいだん'
+			else nil
+
+export build_from入口 = ->
+	with build_1F()
+		g_player.x, g_player.y = 18, 27
+		g_player.たいまつ = false -- 地上部とたいまつを共通とする
+		BGM Dungeon地上.BGM
+
+build_1F_fromB1_1 = ->
+	with build_1F()
+		g_player.x, g_player.y = 12, 22
+build_1F_fromB1_2 = ->
+	with build_1F()
+		g_player.x, g_player.y = 23, 22
+build_1F_fromB1_3 = ->
+	with build_1F()
+		g_player.x, g_player.y = 18, 9
+
+
+mapdataB1 = $to2d [[
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,CCCCCCCCCCCCCCCCCCCCCC,,,,,,,
+,,,,,,,C''''''''C3C'''C'''''C,,,,,,,
+,,,,,,,C'CCCCC''C'''C'C4CCC'C,,,,,,,
+,,,,,,,C'C'''CC'CCCCC'CCC'''C,,,,,,,
+,,,,,,,C'C''''C'''''''CC''C'C,,,,,,,
+,,,,,,,C'C4'C'CC'''''CC''CCCC,,,,,,,
+,,,,,,,C'CCCC''CCCCCCC''CC''C,,,,,,,
+,,,,,,,C''''CC'C''''C''CC'''C,,,,,,,
+,,,,,,,CCC''C''CC''CC4'C''C4C,,,,,,,
+,,,,,,,C'CC'C'CC''''CCCC''CCC,,,,,,,
+,,,,,,,C''''C'C''CC''C4CC'C'C,,,,,,,
+,,,,,,,C'CCCC'C''CC''C''C'C'C,,,,,,,
+,,,,,,,C'C''''CC''''CC''C'C'C,,,,,,,
+,,,,,,,C'C'C'''CC''CC''CC'C'C,,,,,,,
+,,,,,,,C'C'CCC'C3'''C'''''C'C,,,,,,,
+,,,,,,,C'C4C'''CCCCCCCC'CCC'C,,,,,,,
+,,,,,,,C'CCC'CCC''''''''C3''C,,,,,,,
+,,,,,,,C'C'''''''CCCC'CCC'''C,,,,,,,
+,,,,,,,C'C''CCCC'''C''''C'''C,,,,,,,
+,,,,,,,C'CCCC''CCC'CCCC'''C'C,,,,,,,
+,,,,,,,C''''''''4C''''''C'''C,,,,,,,
+,,,,,,,CCCCCCCCCCCCCCCCCCCCCC,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,]]
+
+build_B1 = ->
+	with りゅうおうの城(mapdataB1)
+		.traps[] = with {16, 21} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_1F_fromB1_1()
+		.traps[] = with {25, 23} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_1F_fromB1_2()
+		.traps[] = with {17, 8} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_1F_fromB1_3()
+		.traps[] = with {16, 27} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB1_1()
+		.traps[] = with {23, 9} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB1_2()
+		.traps[] = with {21, 15} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB1_3()
+		_monster = -> generateMonster lume.weightedchoice {スターキメラ: 1, キラーリカント: 1, ドラゴン: 1, だいまどう: 1, あくまのきし: 1}
+		.traps[] = with {}
+			.check = (_player)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+
+build_B1_from1F_1 = ->
+	with build_B1()
+		g_player.x, g_player.y = 16, 21
+build_B1_from1F_2 = ->
+	with build_B1()
+		g_player.x, g_player.y = 25, 23
+build_B1_from1F_3 = ->
+	with build_B1()
+		g_player.x, g_player.y = 17, 8
+
+build_B1_fromB2_1 = ->
+	with build_B1()
+		g_player.x, g_player.y = 16, 27
+build_B1_fromB2_2 = ->
+	with build_B1()
+		g_player.x, g_player.y = 23, 9
+build_B1_fromB2_3 = ->
+	with build_B1()
+		g_player.x, g_player.y = 21, 15
+
+
+mapdataB2 = $to2d[[
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCC3CC4C3'C3'CCCCCCCC
+CCCCCCCC3CC'CC'CC4CCCCCCCC
+CCCCCCCCCC'''C''CCCCCCCCCC
+CCCCCCCC'''CCCC'''CCCCCCCC
+CCCCCCCC'CCC3'C'C'CCCCCCCC
+CCCCCCCC'C'C''CCC'CCCCCCCC
+CCCCCCCC'''CCCC'''CCCCCCCC
+CCCCCCCCCC''C'''CCCCCCCCCC
+CCCCCCCC4CC'CC'CC3CCCCCCCC
+CCCCCCCC'4C''''C3'CCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+]]
+
+build_B2 = ->
+	with りゅうおうの城(mapdataB2)
+		.traps[] = with {13, 8} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_fromB2_1()
+		.traps[] = with {16, 8} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_fromB2_2()
+		.traps[] = with {12, 12} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_fromB2_3()
+		.traps[] = with {11, 8} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B3_fromB2_1()
+		.traps[] = with {17, 9} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B3_fromB2_2()
+		_monster = -> generateMonster lume.weightedchoice {だいまどう: 1, しにがみのきし: 1, ストーンマン: 1, キースドラゴン: 2}
+		.traps[] = with {}
+			.check = (_player)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+		.charactors[] = 宝箱(13, 13, L'ロトのつるぎ')
+
+build_B2_fromB1_1 = ->
+	with build_B2()
+		g_player.x, g_player.y = 13, 8
+build_B2_fromB1_2 = ->
+	with build_B2()
+		g_player.x, g_player.y = 16, 8
+build_B2_fromB1_3 = ->
+	with build_B2()
+		g_player.x, g_player.y = 12, 12
+
+build_B2_fromB3_1 = ->
+	with build_B2()
+		g_player.x, g_player.y = 11, 8
+build_B2_fromB3_2 = ->
+	with build_B2()
+		g_player.x, g_player.y = 17, 9
+
+
+mapdataB3 = $to2d[[
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCC''''''C3''CCCCCCCC
+CCCCCCCC'CCC''CCC'CCCCCCCC
+CCCCCCCC'C3C''''''CCCCCCCC
+CCCCCCCC'C'CCC'CC'CCCCCCCC
+CCCCCCCC'C''C'''C'CCCCCCCC
+CCCCCCCC'CC'CCC'C'CCCCCCCC
+CCCCCCCC'4C'''CCC'CCCCCCCC
+CCCCCCCCCCCCC''4C'CCCCCCCC
+CCCCCCCC''''CCCCC'CCCCCCCC
+CCCCCCCC3'C'''''''CCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+]]
+
+build_B3 = ->
+	with りゅうおうの城(mapdataB3)
+		.traps[] = with {15, 8} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB3_1()
+		.traps[] = with {10, 10} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB3_2()
+		.traps[] = with {9, 14} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B4_fromB3_1()
+		.traps[] = with {15, 15} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B4_fromB3_2()
+		_monster = -> generateMonster lume.weightedchoice {だいまどう: 1, しにがみのきし: 1, ストーンマン: 1, キースドラゴン: 2}
+		.traps[] = with {}
+			.check = (_player)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+
+build_B3_fromB2_1 = ->
+	with build_B3()
+		g_player.x, g_player.y = 15, 8
+build_B3_fromB2_2 = ->
+	with build_B3()
+		g_player.x, g_player.y = 10, 10
+
+build_B3_fromB4_1 = ->
+	with build_B3()
+		g_player.x, g_player.y = 9, 14
+build_B3_fromB4_2 = ->
+	with build_B3()
+		g_player.x, g_player.y = 15, 15
+
+mapdataB4 = $to2d[[
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCC''''''''''CCCCCCCC
+CCCCCCCC'CCCCCC'4'CCCCCCCC
+CCCCCCCC'C4'''''''CCCCCCCC
+CCCCCCCC'CCCC'''C'CCCCCCCC
+CCCCCCCC''''C'''C'CCCCCCCC
+CCCCCCCC'CC'CCC'C'CCCCCCCC
+CCCCCCCCCC''''C'C'CCCCCCCC
+CCCCCCCCC'''C'C3C'CCCCCCCC
+CCCCCCCC'''CC'CCC'CCCCCCCC
+CCCCCCCC3'CC''''''CCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+]]
+
+build_B4 = ->
+	with りゅうおうの城(mapdataB4)
+		.traps[] = with {8, 17} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B3_fromB4_1()
+		.traps[] = with {15, 15} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B3_fromB4_2()
+		.traps[] = with {10, 10} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B5_fromB4_1()
+		.traps[] = with {16, 9} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B5_fromB4_2()
+		_monster = -> generateMonster lume.weightedchoice {だいまどう: 1, しにがみのきし: 1, ストーンマン: 1, キースドラゴン: 2}
+		.traps[] = with {}
+			.check = (_player)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+
+build_B4_fromB3_1 = ->
+	with build_B4()
+		g_player.x, g_player.y = 8, 17
+build_B4_fromB3_2 = ->
+	with build_B4()
+		g_player.x, g_player.y = 15, 15
+
+build_B4_fromB5_1 = ->
+	with build_B4()
+		g_player.x, g_player.y = 10, 10
+build_B4_fromB5_2 = ->
+	with build_B4()
+		g_player.x, g_player.y = 16, 9
+
+mapdataB5 = $to2d[[
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCC4C'C3'''C3CCCCCCCC
+CCCCCCCC'C'CCCC'C'CCCCCCCC
+CCCCCCCC'C''''C'C'CCCCCCCC
+CCCCCCCC'C'CC'C'C'CCCCCCCC
+CCCCCCCC'C'C''C'C'CCCCCCCC
+CCCCCCCC'C'C'4C'C'CCCCCCCC
+CCCCCCCC'C'CCCC'C'CCCCCCCC
+CCCCCCCC'C''''''C'CCCCCCCC
+CCCCCCCC'CCCCCCCC'CCCCCCCC
+CCCCCCCC''''''''''CCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+]]
+
+
+build_B5 = ->
+	with りゅうおうの城(mapdataB5)
+		.traps[] = with {17, 8} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B4_fromB5_1()
+		.traps[] = with {12, 8} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B4_fromB5_2()
+		.traps[] = with {8, 8} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B6_fromB5_1()
+		.traps[] = with {9, 13} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B6_fromB5_2()
+		_monster = -> generateMonster lume.weightedchoice {だいまどう: 1, ストーンマン: 1, ダークドラゴン: 1, しにがみのきし: 2}
+		.traps[] = with {}
+			.check = (_player)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+
+build_B5_fromB4_1 = ->
+	with build_B5()
+		g_player.x, g_player.y = 17, 8
+build_B5_fromB4_2 = ->
+	with build_B5()
+		g_player.x, g_player.y = 12, 8
+
+build_B5_fromB6_1 = ->
+	with build_B5()
+		g_player.x, g_player.y = 8, 8
+build_B5_fromB6_2 = ->
+	with build_B5()
+		g_player.x, g_player.y = 9, 13
+
+mapdataB6 = $to2d[[
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCC3''''''''4CCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCC''''''''CCCCCCCCC
+CCCCCCCCC''''''''CCCCCCCCC
+CCCCCCCC3''''''''4CCCCCCCC
+CCCCCCCCC''''''''CCCCCCCCC
+CCCCCCCCC''''''''CCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCC
+]]
+
+build_B6 = ->
+	with りゅうおうの城(mapdataB6)
+		.traps[] = with {8, 14} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B5_fromB6_1()
+		.traps[] = with {8, 8} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B5_fromB6_2()
+		.traps[] = with {17, 14} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B7_fromB6_1()
+		.traps[] = with {17, 8} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B6_fromB5_2() -- ループする
+		_monster = -> generateMonster lume.weightedchoice {だいまどう: 1, ストーンマン: 1, ダークドラゴン: 1, しにがみのきし: 2}
+		.traps[] = with {}
+			.check = (_player)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+
+build_B6_fromB5_1 = ->
+	with build_B6()
+		g_player.x, g_player.y = 8, 14
+build_B6_fromB5_2 = ->
+	with build_B6()
+		g_player.x, g_player.y = 8, 8
+
+build_B6_fromB7_1 = ->
+	with build_B6()
+		g_player.x, g_player.y = 17, 14
+-- build_B6_fromB7_2 = ->
+-- 	with build_B6()
+-- 		g_player.x, g_player.y = 17, 8
+
+mapdataB7 = $to2d[[
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPCCCCPPPPPPPCCCCCCCCCPCCCPPPPPPPPPP
+PPPPPPPPCC''CCCCCCCCC'''C'''CCC'CCPPPPPPPPP
+PPPPPPPCC''''CC''''C'''''''''C'''CCPPPPPPPP
+PPPPPPPC''''''CC''CC''''C''''C'C''CPPPPPPPP
+PPPPPPPC''C'''C''''''''CCC''''''''CPPPPPPPP
+PPPPPPPC''''''C''''CCCCC'CCCCC'C''CPPPPPPPP
+PPPPPPPCC''''CC''''C'''CCC'''C'''CCPPPPPPPP
+PPPPPPPPCC''CC'''''CC'''''''CCC'CC$PPPPPPPP
+PPPPPPPPPC'CC''CCCCCCC''C''CC$C'C$$PPPPPPPP
+PPPPPPPPPC'''''C'''''CC'''CC$$$$$$PPPPPPPPP
+PPPPPPPPPC'CCCCC'''''CCC'CC$$P$$$PPPPPPPPPP
+PPPPPPPPPC'C'''C'''''''''C$$PPPP$)$PPPPPPPP
+PPPPPPPPPC'C'C'C'''''CCC'CC$PPPPPP!PPPPPPPP
+PPPPPPPPPC'C'''C'''''CC'''CPPP$PP,!PPPPPPPP
+PPPPPPPPPC'C'C'CCCCCCC'''CCP$P,$)$PPPPPPPPP
+PPPPPPPPPC'C'''CC'''''''CCPPPP!!PPPPPPPPPPP
+PPPPPPPPPC'C'C'C'''CCC'CCPPP$PP,$PPPPPPPPPP
+PPPPPPPPPC'C'''C''CCPCCCPPP$$P$P!P$PPPPPPPP
+PPPPPPPPPC'C'C'C'CCPPPPPPP$$PP$$!$$PPPPPPPP
+PPPPPPPPPC'C'''C'CPPPCCCPPPPP$$,,$PPPPPPPPP
+PPPPPPPPCC'CC'CC'CCPCC'CCPPP$$!!,$$PPPPPPPP
+PPPPPPPCC'''C'C'''CCC'''CCPP$CC'CC$PPPPPPPP
+PPPPPPPC''''''''''CC'AA''CCCCC'''C$PPPPPPPP
+PPPPPPPC''C''CC'''C''A'''''''''''C!PPPPPPPP
+PPPPPPPC'''''CCC'CCC'AA''CCCCC'''C!PPPPPPPP
+PPPPPPPCC'''CCPC'CPCC'''CCPP,CCCCC$PPPPPPPP
+PPPPPPPPCC'CCPPC'CPPCC'CCPPP$$,,,$$PPPPPPPP
+PPPPPPPPPCCCPP,C'C,PPCCCPPPPP$$$$$PPPPPPPPP
+PPPPPPPPPPPPP,,C3C,,PPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPP,,,CCC,,PPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPP,,,,,,,,PPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPP,,,,PPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPP,,PPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+]]
+
+build_B7 = ->
+	with りゅうおうの城地上(mapdataB7)
+		.traps[] = with {16, 35} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B6_fromB7_1()
+		_monster = -> generateMonster lume.weightedchoice {だいまどう: 1, ストーンマン: 1, ダークドラゴン: 1, しにがみのきし: 2}
+		.traps[] = with {}
+			.check = (_player)-> math.random() < 0.2
+			.talk = => Battle(_monster())\attach()
+		.ぎんのたてごと = => Battle(_monster())\attach()
+		.charactors[] = 扉(23, 18, 'りゅうおうの城B7')
+		.charactors[] = 宝箱(19, 19, L'やくそう')
+		.charactors[] = 宝箱(18, 19, L'のろいのベルト')
+		.charactors[] = 宝箱(17, 19, L'キメラのつばさ')
+		.charactors[] = 宝箱(18, 18, L'かぎ')
+		.charactors[] = 宝箱(17, 18, math.random(500, 755))
+		.charactors[] = 宝箱(17, 17, L'やくそう')
+		.charactors[] = with Charactor(22, 30, {0x42})
+			.talk = =>
+				with m1 = MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
+						coroutine.yield 1, L('＊「よくきた　%sよ。\n　　わしが　おうのなかの　おう\n　　りゅうおうだ。🔻')\format(g_player.name)
+						coroutine.yield 1, L('\n＊「わしは　まっておった。\n　　そなたのような　わかものが\n　　あらわれることを…🔻')
+						coroutine.yield 1, L('\n＊「もし　わしの　みかたになれば\n　　せかいの　はんぶんを\n　　%sに　やろう。🔻')\format(g_player.name)
+						coroutine.yield 1, L('\n＊「どうじゃ？\n　　わしの　みかたに　なるか？')
+						sb = SelectBoxRetro({L'はい', L'いいえ'})
+						coroutine.yield 1, sb\attach()
+						if sb.index != 2
+							Scene.current.parent\blackout -> Scene.current = require('DQ1_全体マップ').build_atラダトーム城_最弱()
+						else
+							coroutine.yield 1, L('\n＊「おろかものめ！\n　　おもいしるがよい') -- todo 受け入れたとき
+							Scene.current.detach = =>
+								MessageBoxRetro.__base.detach(Scene.current)
+								with b1 = Battle(generateMonster 'りゅうおう')
+									.detach = =>
+										Battle.__base.detach(b1)
+										if b1.monster.hp <= 0
+											Battle(generateMonster 'りゅうおう(竜)')\attach()
+									\attach()
+							-- りゅうおうが　しょうたいを\nあらわした
+							-- 竜王戦.ogg
+							-- そして　ひかりのたまを\nりゅうおうから　とりもどした！🔻
+							-- あなたが　ひかりのたまを　かざすと\nまばゆいばかりの　ひかりが\nあふれだす……🔻
+							-- このくにに　へいわが　もどったのだ。
+							-- g_player.items[] = L'ひかりのたま'
+							-- Scene.current\blackout -> Scene.current = require('全体マップ').build_atりゅうおうの城
+						nil )})
+					\attach()
+
+
+build_B7_fromB6_1 = ->
+	with build_B7()
+		g_player.x, g_player.y = 16, 35
+-- export build_B7_fromB6_1 = ->
+-- 	with build_B7()
+-- 		g_player.x, g_player.y = 23, 30
+
+_ = $mml2ogg([[
+Tempo(80)
+Track(1) q50 @8 o4 
+a>c-<a>c-<a>c-<a>c-<　a>c-<a>c-<a>c-<a>c-<
+l16a>c-cde-4 e-8g-e-a8a-g-　l8fe-fg- g-a-16g-16fe-　l16fg-fe-d8c-8 fe-dc- c-4　c-4 c-4<
+a>c-<a>c-<a>c-<a>c-<　a>c-<a>c-<a>c-<a>c-<
+l16a>c-cde-4 e-8g-e-a8a-g-　l8fe-fg- g-a-16g-16fe-　l16fg-fe-d8c-8 fe-dc- c-4　c-4 c-4<
+Track(2) v80 q60 @8 o4 l8
+fdfdfdfd　fdfdfdfd　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　
+fdfdfdfd　rdfdfdfd　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　
+]], りゅうおう戦) -- 60/80 * 36

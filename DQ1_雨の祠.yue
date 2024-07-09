@@ -1,0 +1,62 @@
+import 'macros' as {$}
+import 'utl' as :L, :play--, :toZenkaku
+import 'lib.lume'
+import 'ui' as :Scene, :BGM
+import 'main' as :Castle, :g_player, :Charactor, :宝箱, :MessageBoxRetro
+local *
+
+
+mapdata = $to2d [[
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCC''''''''CCCCCCCC
+CCCCCCCC''''''''''CCCCCCC
+CCCCCCCC''CCCCCC''CCCCCCC
+CCCCCCCC''C''C'C''CCCCCCC
+CCCCCCCC''C'''''''CCCCCCC
+CCCCCCCC''C''C'C''CCCCCCC
+CCCCCCCC''CCCCCC''CCCCCCC
+CCCCCCCC''''''''''CCCCCCC
+CCCCCCCCC''''''''CCCCCCCC
+CCCCCCCCCCCC3'CCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCC]]
+
+
+export build = ->
+	with Castle(mapdata)
+		.traps[] = with {12, 16}
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_at雨の祠()
+		if not lume.find(g_player.items, L'あまぐものつえ')
+			.charactors[] = with self = Charactor(12,11,{0x3a,0x3b}) -- 老人
+				if not 'ぎんのたてごと' in g_player.items
+					.talk = =>
+						MessageBoxRetro({ L'＊「そなたが　まことの　ゆうしゃか\nどうか　ためさせてほしい。🔻', L'＊「このちの　どこかに　まものたちを\nよびよせる　ぎんのたてごとが　あるときく。🔻', L'それを　もちかえったとき\nそなたを　ゆうしゃと　みとめ\nあまぐものつえを　さずけよう。🔻' })
+				else
+					.talk = => 
+						MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
+							coroutine.yield 1, L('＊「おお　%s！\n　　たてごとを　もってきたな！🔻')\format(g_player.name)
+							coroutine.yield 1, L'\n＊「わしは　まっておった。\n　　そなたのような　わかものが\n　　あわられることを…🔻'
+							coroutine.yield 1, L'\n＊「さあ　たからの　はこを\n　　とるがよい。🔻'
+							lume.remove(Scene.current.parent.charactors, @)
+							nil
+						)})\attach()
+			.charactors[] = 宝箱(11, 11, L'あまぐものつえ') -- 宝箱
+		g_player.x, g_player.y = 12, 16
+		BGM Castle.BGM
+
+

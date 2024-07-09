@@ -98,15 +98,14 @@ export class MessageBoxRetro extends MessageBox
 		gr.rectangle(gr.setColor(@overlapping_color) or 'fill', 0, 0, maid64.sizeX, maid64.sizeY)
 
 	draw_gold: =>
-		X, Y, W, H = 3, 5, 6, 1
+		X, Y, W, H, gold = 3, 5, 6, 1, tostring(math.max(0, g_player.gold))
 		gr.draw_frame(X, Y, W, H, g_player.name)
-		gr.points bdf1\points(gr.setColor(gr.uipalette.retro1) or 'Ｇ'..'　'\rep(5-#tostring(g_player.gold))..toZenkaku(g_player.gold), X*8, Y*8)
+		gr.points bdf1\points(gr.setColor(gr.uipalette.retro1) or 'Ｇ'..'　'\rep(5-#gold)..toZenkaku(gold), X*8, Y*8)
 
 	draw_hpmp: =>
-		X, Y, W, H = 3, 5, 6, 3
+		X, Y, W, H, hp, mp = 3, 5, 6, 3, tostring(math.max(0, g_player.hp)), tostring(math.max(0, g_player.mp))
 		gr.draw_frame(X, Y, W, H, g_player.name)
-		gr.points bdf1\points(gr.setColor(gr.uipalette.retro1) or 'ＨＰ'..'　'\rep(4-#tostring(g_player.hp))..toZenkaku(g_player.hp)..'\nＭＰ'..'　'\rep(4-#tostring(g_player.mp))..toZenkaku(g_player.mp), X*8, Y*8)
-
+		gr.points bdf1\points(gr.setColor(gr.uipalette.retro1) or 'ＨＰ'..'　'\rep(4-#hp)..toZenkaku(hp)..'\nＭＰ'..'　'\rep(4-#mp)..toZenkaku(mp), X*8, Y*8)
 
 
 export class Charactor -- NPCもモンスターもこれで表せるが、分けるべきか？
@@ -314,9 +313,13 @@ export LevelUps = {
 		Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_fromルーラ()
 		nil
 	}
-	りゅうのうろこ: { -- 守備力ってパラメーターがない
+	りゅうのうろこ: { gen_messages: -> -> -- 守備力ってパラメーターがない
+		coroutine.yield 1, L('%sは　%sをみにつけた。')\format(g_player.name, L'りゅうのうろこ')
+		nil
 	}
-	せんしのゆびわ: { -- ならこれは攻撃力？
+	せんしのゆびわ: { gen_messages: -> -> -- ならこれは攻撃力？
+		coroutine.yield 1, L('%sは　%sをみにつけた。')\format(g_player.name, L'せんしのゆびわ')
+		nil
 	}
 	ようせいのふえ: {gen_messages: (subject, other)-> ->
 		coroutine.yield 1, L('%sは　%sをふいた！')\format(subject.name, L'ようせいのふえ')
@@ -423,6 +426,7 @@ class 宿屋.MessageBox extends MessageBoxRetro
 					@update = coroutine.wrap(@_update) -- メッセージボックスのクリア
 					BGM()
 					s = play $mml2ogg([[ Tempo(114) @8 q100 o5 l8 '>d<f+' '>c+<f' '>c<e' 'bd' 'ac',50 'd<f+>',50 '>d<f+'4 ]])
+					g_player.hp, g_player.mp = g_player.maxhp, g_player.maxmp
 					@overlapping_color = {0,0,0,1}
 					while s\isPlaying()
 						@overlapping_color[4] = lume.smooth(0, 1, 1 - s\tell() / s\getDuration())
@@ -1052,11 +1056,12 @@ export Field = class Field extends Scene -- 前方宣言(local *)のため
 		X, Y, W, H = 3, 5, 6, 9
 		gr.setScissor(X*8-8,Y*8-16,(W+16)*8,(H*8+32)*(input.idletime-0.8)*20)
 		gr.draw_frame(X,Y,W,H,g_player.name)
-		s = L'レベル'..' '\rep(6-#tostring(g_player.level)*2)..toZenkaku(g_player.level)..
-			L'\nＨＰ'..' '\rep(8-#tostring(g_player.hp)*2)..toZenkaku(g_player.hp)..
-			L'\nＭＰ'..' '\rep(8-#tostring(g_player.mp)*2)..toZenkaku(g_player.mp)..
-			L'\nＧ'..' '\rep(10-#tostring(g_player.gold)*2)..toZenkaku(g_player.gold)..
-			L'\nＥ'..' '\rep(10-#tostring(g_player.経験値)*2)..toZenkaku(g_player.経験値)
+		hp = tostring(math.max(0, g_player.hp))
+		s = L'レベル'..'　'\rep(3-#tostring(g_player.level))..toZenkaku(g_player.level)..
+			L'\nＨＰ'..'　'\rep(4-#hp)..toZenkaku(hp)..
+			L'\nＭＰ'..'　'\rep(4-#tostring(g_player.mp))..toZenkaku(g_player.mp)..
+			L'\nＧ'..'　'\rep(5-#tostring(g_player.gold))..toZenkaku(g_player.gold)..
+			L'\nＥ'..'　'\rep(5-#tostring(g_player.経験値))..toZenkaku(g_player.経験値)
 		gr.points((gr.setColor(gr.uipalette.retro1) or bdf1\points(s, X*8, Y*8)))
 		gr.setScissor()
 
@@ -1225,7 +1230,7 @@ export Title = class Title extends SelectBox
 			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.chipids = {0x26, 0x27}
-		require('DQ1_全体マップ').save = lume.noop()
+		_G.PROJECTNAME = ''--require('DQ1_全体マップ').save = nil--lume.noop
 		Scene.current = require('DQ1_ガライの町').build_from西口()
 	start_at沼地の洞窟: =>
 		g_player = with g_player
@@ -1236,7 +1241,7 @@ export Title = class Title extends SelectBox
 			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.chipids = {0x26, 0x27}
-		require('DQ1_全体マップ').save = lume.noop()
+		_G.PROJECTNAME = ''--require('DQ1_全体マップ').save = nil--lume.noop
 		Scene.current = require('DQ1_沼地の洞窟').build_fromラダトーム方面()
 	start_at岩山の洞窟: =>
 		g_player = with g_player
@@ -1247,7 +1252,7 @@ export Title = class Title extends SelectBox
 			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.chipids = {0x26, 0x27}
-		require('DQ1_全体マップ').save = lume.noop()
+		_G.PROJECTNAME = ''--require('DQ1_全体マップ').save = nil--lume.noop
 		Scene.current = require('DQ1_岩山の洞窟').build_from地上()
 	start_atドムドーラの町: =>
 		g_player = with g_player
@@ -1258,7 +1263,7 @@ export Title = class Title extends SelectBox
 			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.chipids = {0x26, 0x27}
-		require('DQ1_全体マップ').save = lume.noop()
+		_G.PROJECTNAME = ''--require('DQ1_全体マップ').save = nil--lume.noop
 		Scene.current = require('DQ1_ドムドーラの町').build()
 	start_atりゅうおうの城: =>
 		g_player = with g_player
@@ -1269,7 +1274,7 @@ export Title = class Title extends SelectBox
 			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ', L'ロトのしるし', }
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.chipids = {0x26, 0x27}
-		require('DQ1_全体マップ').save = lume.noop()
+		_G.PROJECTNAME = ''--require('DQ1_全体マップ').save = nil--lume.noop
 		Scene.current = require('DQ1_りゅうおうの城').build_from入口()
 
 
@@ -1288,11 +1293,11 @@ love.load = ->
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			-- .flags[] = L'呪い'
 			.chipids = {0x26, 0x27}
-		-- Title()\attach()
+		Title()\attach()
 		-- require('DQ1_玉座').build_opening()\attach()
 		-- require('DQ1_玉座').build_死に戻り()\attach()
 		-- require('DQ1_ラダトーム城').build_at城門()\attach()
-		require('DQ1_ラダトーム町').build_from西口()\attach()
+		-- require('DQ1_ラダトーム町').build_from西口()\attach()
 		-- require('DQ1_ロトの洞窟').build_from地上()\attach()
 		-- require('DQ1_ガライの町').build_from西口()\attach()
 		-- require('DQ1_マイラの村').build()\attach()
