@@ -293,12 +293,13 @@ build = ->
 		BGM Field.BGM
 
 save = ->
+	if #PROJECTNAME == 0 then return
 	love.filesystem.write(PROJECTNAME..'.save', lume.serialize({player: lume.pick(g_player, 'name', 'x', 'y', 'level', 'hp', 'mp', 'maxhp', 'maxmp', 'spells', 'items', 'gold', '経験値', 'ちから', '素早さ', '武器', '鎧', '盾', 'flags', 'トヘロスcount', 'せいすいcount', 'レミーラcount'), }))
 
 export build_load = ->
+	savedata = if love.filesystem.getInfo(PROJECTNAME..'.save') then lume.deserialize(love.filesystem.read(PROJECTNAME..'.save') or '{}') else {} -- load
+	if not savedata.player then return require('DQ1_玉座').build_opening()
 	with build()
-		savedata = if love.filesystem.getInfo(PROJECTNAME..'.save') then lume.deserialize(love.filesystem.read(PROJECTNAME..'.save') or '{}') else {} -- load
-		if not savedata.player then Scene.current = require('DQ1_玉座').build_opening()
 		for key in *{'name', 'x', 'y', 'level', 'hp', 'mp', 'maxhp', 'maxmp', 'spells', 'items', 'gold', '経験値', 'ちから', '素早さ', '武器', '鎧', '盾', 'flags', 'トヘロスcount', 'せいすいcount', 'レミーラcount'}
 			g_player[key] = savedata.player[key]
 

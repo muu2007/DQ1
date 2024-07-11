@@ -73,7 +73,7 @@ build_1F = ->
 			.talk = =>
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout -> Scene.current = build_B1_from1F_2()
-		if lume.find(g_player.flags, 'りゅうおうの城の階段をみつけた')
+		if lume.find(g_player.flags, L'りゅうおうの城の階段をみつけた')
 			階段を設定()
 		_monster = -> generateMonster lume.weightedchoice {スターキメラ: 1, キラーリカント: 1, ドラゴン: 1, だいまどう: 1, あくまのきし: 1}
 		.traps[] = with {}
@@ -168,6 +168,22 @@ build_B1 = ->
 			.talk = =>
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout -> Scene.current = build_B2_fromB1_3()
+		.traps[] = with {10, 12} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB1_4()
+		.traps[] = with {10, 22} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB1_5()
+		.traps[] = with {22, 17} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB1_6()
+		.traps[] = with {27, 15} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB1_7()
 		_monster = -> generateMonster lume.weightedchoice {スターキメラ: 1, キラーリカント: 1, ドラゴン: 1, だいまどう: 1, あくまのきし: 1}
 		.traps[] = with {}
 			.check = (_player)-> math.random() < 0.2
@@ -193,6 +209,18 @@ build_B1_fromB2_2 = ->
 build_B1_fromB2_3 = ->
 	with build_B1()
 		g_player.x, g_player.y = 21, 15
+build_B1_fromB2_4 = ->
+	with build_B1()
+		g_player.x, g_player.y = 10, 12
+build_B1_fromB2_5 = ->
+	with build_B1()
+		g_player.x, g_player.y = 10, 22
+build_B1_fromB2_6 = ->
+	with build_B1()
+		g_player.x, g_player.y = 22, 17
+build_B1_fromB2_7 = ->
+	with build_B1()
+		g_player.x, g_player.y = 27, 15
 
 
 mapdataB2 = $to2d[[
@@ -204,7 +232,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCCCCCCCCCCCC
-CCCCCCCC3CC4C3'C3'CCCCCCCC
+CCCCCCCC3'C4C3'C3'CCCCCCCC
 CCCCCCCC3CC'CC'CC4CCCCCCCC
 CCCCCCCCCC'''C''CCCCCCCCCC
 CCCCCCCC'''CCCC'''CCCCCCCC
@@ -246,12 +274,39 @@ build_B2 = ->
 			.talk = =>
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout -> Scene.current = build_B3_fromB2_2()
+		----
+		.traps[] = with {8, 8} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_fromB2_4()
+		.traps[] = with {8, 9} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_fromB2_5()
+		.traps[] = with {16, 17} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_fromB2_6()
+		.traps[] = with {17, 16} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B1_fromB2_7()
+		.traps[] = with {8, 16} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B3_fromB2_3()
+		.traps[] = with {9, 17} -- 降り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B3_fromB2_4()
+
 		_monster = -> generateMonster lume.weightedchoice {だいまどう: 1, しにがみのきし: 1, ストーンマン: 1, キースドラゴン: 2}
 		.traps[] = with {}
 			.check = (_player)-> math.random() < 0.2
 			.talk = => Battle(_monster())\attach()
 		.ぎんのたてごと = => Battle(_monster())\attach()
-		.charactors[] = 宝箱(13, 13, L'ロトのつるぎ')
+		if g_player.武器 != L'ロトのつるぎ' and not lume.find(g_player.items, L'ロトのつるぎ') -- これだと売ったらまた出現することになる
+			.charactors[] = 宝箱(13, 13, L'ロトのつるぎ', L'ロトのつるぎを見つけた')
 
 build_B2_fromB1_1 = ->
 	with build_B2()
@@ -269,8 +324,27 @@ build_B2_fromB3_1 = ->
 build_B2_fromB3_2 = ->
 	with build_B2()
 		g_player.x, g_player.y = 17, 9
+------------
+build_B2_fromB1_4 = ->
+	with build_B2()
+		g_player.x, g_player.y = 8, 8
+build_B2_fromB1_5 = ->
+	with build_B2()
+		g_player.x, g_player.y = 8, 9
+build_B2_fromB1_6 = ->
+	with build_B2()
+		g_player.x, g_player.y = 16, 17
+build_B2_fromB1_7 = ->
+	with build_B2()
+		g_player.x, g_player.y = 17, 16
 
-
+build_B2_fromB3_3 = ->
+	with build_B2()
+		g_player.x, g_player.y = 8, 16
+build_B2_fromB3_4 = ->
+	with build_B2()
+		g_player.x, g_player.y = 9, 17
+		
 mapdataB3 = $to2d[[
 CCCCCCCCCCCCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -284,7 +358,7 @@ CCCCCCCC''''''C3''CCCCCCCC
 CCCCCCCC'CCC''CCC'CCCCCCCC
 CCCCCCCC'C3C''''''CCCCCCCC
 CCCCCCCC'C'CCC'CC'CCCCCCCC
-CCCCCCCC'C''C'''C'CCCCCCCC
+CCCCCCCC'C''C3''C'CCCCCCCC
 CCCCCCCC'CC'CCC'C'CCCCCCCC
 CCCCCCCC'4C'''CCC'CCCCCCCC
 CCCCCCCCCCCCC''4C'CCCCCCCC
@@ -310,6 +384,14 @@ build_B3 = ->
 			.talk = =>
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout -> Scene.current = build_B2_fromB3_2()
+		.traps[] = with {13, 12} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB3_3()
+		.traps[] = with {8, 17} -- 昇り階段
+			.talk = =>
+				play'assets/DQ1/階段.ogg'
+				Scene.current\blackout -> Scene.current = build_B2_fromB3_4()
 		.traps[] = with {9, 14} -- 降り階段
 			.talk = =>
 				play'assets/DQ1/階段.ogg'
@@ -337,6 +419,14 @@ build_B3_fromB4_1 = ->
 build_B3_fromB4_2 = ->
 	with build_B3()
 		g_player.x, g_player.y = 15, 15
+----------
+build_B3_fromB2_3 = ->
+	with build_B3()
+		g_player.x, g_player.y = 13, 12
+build_B3_fromB2_4 = ->
+	with build_B3()
+		g_player.x, g_player.y = 8, 17
+
 
 mapdataB4 = $to2d[[
 CCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -449,7 +539,7 @@ build_B5 = ->
 			.talk = =>
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout -> Scene.current = build_B6_fromB5_1()
-		.traps[] = with {9, 13} -- 降り階段
+		.traps[] = with {13, 13} -- 降り階段
 			.talk = =>
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout -> Scene.current = build_B6_fromB5_2()
@@ -471,7 +561,7 @@ build_B5_fromB6_1 = ->
 		g_player.x, g_player.y = 8, 8
 build_B5_fromB6_2 = ->
 	with build_B5()
-		g_player.x, g_player.y = 9, 13
+		g_player.x, g_player.y = 13, 13
 
 mapdataB6 = $to2d[[
 CCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -618,10 +708,10 @@ build_B7 = ->
 						else
 							coroutine.yield 1, L('\n＊「おろかものめ！\n　　おもいしるがよい') -- todo 受け入れたとき
 							Scene.current.detach = =>
-								MessageBoxRetro.__base.detach(Scene.current)
+								MessageBoxRetro.__base.detach(Scene.current) -- super()
 								with b1 = Battle(generateMonster 'りゅうおう')
 									.detach = =>
-										Battle.__base.detach(b1)
+										Battle.__base.detach(b1) -- super()
 										if b1.monster.hp <= 0
 											Battle(generateMonster 'りゅうおう(竜)')\attach()
 									\attach()
@@ -653,4 +743,4 @@ l16a>c-cde-4 e-8g-e-a8a-g-　l8fe-fg- g-a-16g-16fe-　l16fg-fe-d8c-8 fe-dc- c-4�
 Track(2) v80 q60 @8 o4 l8
 fdfdfdfd　fdfdfdfd　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　
 fdfdfdfd　rdfdfdfd　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　g-e-g-e-g-e-g-e-　
-]], りゅうおう戦) -- 60/80 * 36
+]], りゅうおう戦, 36.2) -- 60/80 * 36

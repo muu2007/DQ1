@@ -59,7 +59,10 @@ export build = ->
 			.talk = => Battle(_monster())\attach() -- あくまのきしは場所でエンカウント
 		.ぎんのたてごと = => Battle(_monster())\attach()
 		.リレミト = => Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atドムドーラの町()
-		.しらべる = => if 26 == g_player.x and 20 == g_player.y then L'ロトのよろい' else nil
+		if g_player.鎧 != L'ロトのよろい' and not lume.find(g_player.items, L'ロトのよろい')
+			.しらべる = => if 26 == g_player.x and 20 == g_player.y then L'ロトのよろい' else nil
+		else
+			.しらべる = => nil
 		g_player.x, g_player.y = 8, 18
 		BGM Dungeon地上.BGM
 

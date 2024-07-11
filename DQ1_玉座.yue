@@ -62,7 +62,7 @@ mapdata = $to2d[[
 
 -- buildを呼ぶとシーン(シナリオ)を作る
 -- いくつかのbuild_xxx()を１ファイルに入れる。全体的に別セリフだったり、小さなマップが合ったり
-export build_fromDownstair = ()->
+export build_fromDownstair = ->
 	with Castle(mapdata)
 		deployローラ姫 = ->
 			.charactors[] = with Charactor(14, 12, {0x32}) -- ローラ姫
@@ -92,7 +92,7 @@ export build_fromDownstair = ()->
 						coroutine.yield 1, L('＊「おお　%s！　よくぞ\n　　ひめを　たすけだしてくれた。\n　　こころから　れいをいうぞ！🔻')\format(g_player.name)
 						coroutine.yield 1, L('\n＊「さあ　ローラ\n　　わたしのとなりへ。🔻')
 						coroutine.yield 1, L('\nローラ「まってください。　ローラは\n　　　　%sさまに　おくりものを\n　　　　しとうございます。🔻')\format(g_player.name)
-						coroutine.yield 1, L('\nローラ「%sを　あいする\n　　　　わたしの　こころ。どうか\n　　　　うけとってくださいませ。🔻')\format(g_player.name)
+						coroutine.yield 1, L('\nローラ「%sを　あいする\n　　　　わたしの　こころ。　どうか\n　　　　うけとってくださいませ。🔻')\format(g_player.name)
 						coroutine.yield 1, L('\nローラ「ああ！　たとえ　はなれて\n　　　　いても　ローラは　いつも\n　　　　あなたと　ともに　あります。🔻')
 						coroutine.yield 1, L('\nローラ「では、%sさま……🔻')\format(g_player.name)
 						deployローラ姫()
@@ -133,11 +133,12 @@ export build_fromDownstair = ()->
 		g_player.x, g_player.y = 16, 17
 
 
-export build_死に戻り = ()->
+export build_死に戻り = ->
 	with Castle(mapdata)
 		.charactors[] = with Charactor(11,12,{0x30}) -- 王様
 			.talk = =>
 				if not lume.find(g_player.flags, L'呪い')
+					gr.uipalette.retro1 = gr.uipalette.base
 					MessageBoxRetro({
 						L('＊「おお　%s！\n　　しんでしまうとは　なにごとだ！🔻\n　　しかたのない　やつだな。🔻')\format(g_player.name)
 						L'\n＊「おまえに　もう　いちど\n　　きかいを　あたえよう！🔻'
@@ -151,9 +152,9 @@ export build_死に戻り = ()->
 						--冒険の書の下りさくじょ
 						L('\n＊「では　また　あおう\n　　ゆうしゃ　%sよ！🔻')\format(g_player.name)})\attach()
 				else
+					g_player.hp = 1
 					MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
 						coroutine.yield 1, L('＊「おお　%s！\n　　しんでしまうとは　なにごとだ！🔻\n　　しかも　のろわれているではないか！🔻\n　　のろわれしものよ　でてゆけ！🔻')\format(g_player.name)
-						g_player.hp = 1
 						Scene.current\detach()
 						Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atラダトーム城()
 						nil
@@ -167,7 +168,7 @@ export build_死に戻り = ()->
 		g_player.x, g_player.y, g_player.direction = 11, 13, {0, -1}
 
 
-export build_opening = ()->
+export build_opening = ->
 	with Castle(mapdata)
 		.charactors[] = with Charactor(11,12,{0x30}) -- 王様
 			.talk = => -- [*] bug 商人のテーブルと共用なので挟んだ先のものも扱えてしまう

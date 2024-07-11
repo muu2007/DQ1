@@ -83,7 +83,7 @@ build = ->
 							Battle.__base.detach(b)
 						\attach()
 		.charactors[] = 扉(14, 29, '沼地の洞窟の牢屋の扉')
-		if not lume.find(g_player.flags, L'ローラ姫を救出した')
+		if not lume.find(g_player.flags, L'ローラ姫を救出した') and not lume.find(g_player.items, L'おうじょのあい')
 			.charactors[] = with Charactor(14,27,{0x32}) -- ローラ姫
 				.talk = => MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
 					coroutine.yield 1, L'ローラ「ああ！　たすけだしてくださる\n　　　　かたが　ほんとうにいたなんて\n　　　　まだ　しんじられませんわ！🔻'

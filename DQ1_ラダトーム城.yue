@@ -169,7 +169,7 @@ export build_from玉座 = ->
 
 export build_from地下室 = ->
 	with build()
-		g_player.x, g_player.y = 31, 33
+		g_player.x, g_player.y = 37, 38
 
 
 
@@ -240,7 +240,7 @@ export build_ending = ->
 				coroutine.yield 1, L('\n＊「そなたこそ　このせかいを\n　　おさめるに　ふさわしい　おかた\n　　なのじゃ！🔻')
 				coroutine.yield 1, L('\n＊「わしに　かわって\n　　このくにを　おさめてくれるな？🔻')
 				coroutine.yield 1, L('\nしかし　%sは　いいました。🔻')\format(g_player.name)
-				coroutine.yield 1, L('\n＊「いいえ。わたしの　おさめる\n　　くにが　あるなら　それは\n　　わたしじしんで　さがしたいのです🔻')
+				coroutine.yield 1, L('\n＊「いいえ。わたしの　おさめる\n　　くにが　あるなら　それは\n　　わたしじしんで　さがしたいのです。🔻')
 				l = Charactor(15, 16, {0x32})
 				Scene.current.parent.charactors[] = l
 				for x = 15, 18, 0.05

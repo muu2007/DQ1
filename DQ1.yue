@@ -27,7 +27,9 @@ maid64.clearBG = -> gr.clear(gr.uipalette.text)
 -- love.audio.setVolume(.65)
 
 -- maid64.canvasの外(screen)にSoftGamepadを描く→描画時に位置などを調整
-const softgamepad = SoftGamepad(SoftGamepad.LURDABButtons256)
+const softgamepad = with SoftGamepad(SoftGamepad.LURDABButtons256)
+	.buttons.A[5], .buttons.B[5] = nil, nil
+
 -- @diagnostic disable-next-line: duplicate-set-field
 love.draw = ->
 	love.draw1()
@@ -40,7 +42,7 @@ export play_wait = (fn)->
 	s = play fn
 	while s\isPlaying() do coroutine.yield 1
 
-gr.uipalette.retro1 = gr.uipalette.base -- 体力が少ないときに赤にするもの
+gr.uipalette.retro1 = gr.uipalette.base -- 体力が少ないときに赤表示にするもの
 
 const bdf1 = with BDF('assets/fonts/misaki_gothic_2nd.bdf') -- [ ]todo: 濁点、半濁点を分離して上に描画'assets/fonts/quan.bdf')
 	.fy = 8
@@ -309,6 +311,7 @@ export LevelUps = {
 	キメラのつばさ: { gen_messages: -> ->
 		coroutine.yield 1, L('%sは　%sをつかった！')\format(g_player.name, L'キメラのつばさ')
 		play_wait'assets/sounds/mml2ogg/呪文.ogg'
+		lume.remove(g_player.items, L'キメラのつばさ')
 		Scene.current\detach()
 		Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_fromルーラ()
 		nil
@@ -417,7 +420,7 @@ class 宿屋.MessageBox extends MessageBoxRetro
 	new: (price)=>
 		sb = SelectBoxRetro({L'はい', L'いいえ'})
 		super({ <index>: coroutine.wrap((_, _)-> -- selfとnだけどselfを覆わないようにする
-			coroutine.yield 1, L('＊「たびびとの　やどやへ　ようこそ。\n　　ひとばん　%sＧですが\n　　おとまりに　なりますか？')\format(toZenkaku(price))
+			coroutine.yield 1, L('＊「たびびとの　やどやへ　ようこそ。\n　　ひとばん　%sゴールドですが\n　　おとまりに　なりますか？')\format(toZenkaku(price))
 			coroutine.yield 1, sb\attach()
 			if sb.index == 1
 				if g_player.gold >= price
@@ -464,23 +467,26 @@ class 武器屋.MessageBox extends MessageBoxRetro
 					sb2.index = 1
 					coroutine.yield 1, sb2\attach()
 					if sb2.index >= 1
-						coroutine.yield 1, L('\n＊「%sだね。')\format(toZenkaku(goods[sb2.index][1]))
+						{name, price} = goods[sb2.index]
+						coroutine.yield 1, L('\n＊「%sだね。')\format(toZenkaku(name))
 						sb1.index = 1
 						coroutine.yield 1, sb1\attach()
 						if sb1.index == 1
-							if g_player.gold >= goods[sb2.index][2]
+							if lume.count(g_player.items, (i)-> i == name) >= 6
+								coroutine.yield 1, L'\n＊「これいじょう\n　　うるわけには　いかないようです。🔻'
+								break
+							elseif g_player.gold >= price--goods[sb2.index][2]
 								coroutine.yield 1, L'\n＊「どうもありがとう。'
-								item = goods[sb2.index][1]
-								if item in lume.keys(武器一覧)
+								if name in lume.keys(武器一覧)
 									if g_player.武器 then g_player.items[] = g_player.武器
-									g_player.武器 = item
-								elseif item in lume.keys(鎧一覧)
+									g_player.武器 = name
+								elseif name in lume.keys(鎧一覧)
 									if g_player.鎧 then g_player.items[] = g_player.鎧
-									g_player.鎧 = item
-								elseif item in lume.keys(盾一覧)
+									g_player.鎧 = name
+								elseif name in lume.keys(盾一覧)
 									if g_player.盾 then g_player.items[] = g_player.盾
-									g_player.盾 = item
-								g_player.gold -= goods[sb2.index][2]
+									g_player.盾 = name
+								g_player.gold -= price--goods[sb2.index][2]
 								n = (if g_player.武器 then 1 else 0) + (if g_player.盾 then 2 else 0) -- 勇者のスプライト変更
 								g_player.chipids = {0x20+n*2, 0x20+n*2+1}
 							else coroutine.yield 1, L'\n＊「すまないが　おかねが\n　　たりないようだ。'
@@ -499,8 +505,8 @@ export 道具屋 = class 道具屋 extends Charactor
 
 class 道具屋.MessageBox extends MessageBoxRetro
 	@売値: {やくそう: 12, かぎ: 26, たいまつ: 4, せいすい: 19, キメラのつばさ: 35, りゅうのうろこ: 10, せんしのゆびわ: 15, のろいのベルト: 180, しのくびかざり: 1200
-		たけざお: 10, こんぼう: 30, どうのつるぎ: 90, てつのおの: 280, はがねのつるぎ: 750, ほのおのつるぎ: 4900, ロトのつるぎ: 1
-		ぬののふく: 10, かわのふく: 35, くさりかたびら: 150, てつのよろい: 500, はがねのよろい: 1500, まほうのよろい: 3850, ロトのよろい: 1
+		たけざお: 10, こんぼう: 30, どうのつるぎ: 90, てつのおの: 280, はがねのつるぎ: 750, ほのおのつるぎ: 4900, --ロトのつるぎ: 1 売れないことにする
+		ぬののふく: 10, かわのふく: 35, くさりかたびら: 150, てつのよろい: 500, はがねのよろい: 1500, まほうのよろい: 3850, --ロトのよろい: 1
 		かわのたて: 45, てつのたて: 800, みかがみのたて: 7400}
 	new: (goods)=>
 		super({ <index>: coroutine.wrap((_, _)->
@@ -516,15 +522,19 @@ class 道具屋.MessageBox extends MessageBoxRetro
 						sb2.index = 1
 						coroutine.yield 1, sb2\attach()
 						if sb2.index >= 1
-							coroutine.yield 1, L('\n＊「%sですね？')\format(toZenkaku(goods[sb2.index][1]))
+							{name, price} = goods[sb2.index]--[1]
+							coroutine.yield 1, L('\n＊「%sですね？')\format(toZenkaku(name))
 							sb1.index = 1
 							coroutine.yield 1, sb1\attach()
 							if sb1.index == 1
-								if g_player.gold >= goods[sb2.index][2]
+								if lume.count(g_player.items, (i)-> i == name) >= 6
+									coroutine.yield 1, L'\n＊「これいじょう\n　　うるわけには　いかないようです。🔻'
+									break
+								elseif g_player.gold >= price--goods[sb2.index][2]
 									coroutine.yield 1, L'\n＊「まいど　ありがとうございます。'
-									g_player.items[] = goods[sb2.index][1]
-									g_player.gold -= goods[sb2.index][2]
-								else coroutine.yield 1, L'\n＊『おかねが　たりませんが。'
+									g_player.items[] = name--goods[sb2.index][1]
+									g_player.gold -= price--goods[sb2.index][2]
+								else coroutine.yield 1, L'\n＊「おかねが　たりませんが。'
 						coroutine.yield 1, L'\n＊「ほかに　なにか　かわれますか？'
 						sb1.index = 1
 						coroutine.yield 1, sb1\attach()
@@ -567,7 +577,7 @@ class かぎ屋.MessageBox extends MessageBoxRetro
 			coroutine.yield 1, L('＊「どんなとびらも　あけてしまう\n　　まほうの　かぎは　いらんかな？\n　　ひとつ　%sゴールドでどうじゃ？')\format(toZenkaku(price))
 			coroutine.yield 1, sb1\attach()
 			while sb1.index == 1
-				if lume.count(g_player.items, L'かぎ') >= 6
+				if lume.count(g_player.items, (i)-> i == 'かぎ') >= 6
 					coroutine.yield 1, L'\n＊「わるいが　これいじょう\n　　うるわけには　いかんな。🔻'
 					break
 				elseif g_player.gold >= price
@@ -596,7 +606,10 @@ class せいすい屋.MessageBox extends MessageBoxRetro
 			coroutine.yield 1, L('＊「まものよけの　せいすいは\n　　いかがでしょう？\n　　ひとびん　%sゴールドですが。')\format(toZenkaku(price))
 			coroutine.yield 1, sb1\attach()
 			while sb1.index == 1
-				if g_player.gold >= price
+				if lume.count(g_player.items, (i)-> i == 'せいすい') >= 6
+					coroutine.yield 1, L'\n＊「これいじょう\n　　うるわけには　いきません。🔻'
+					break
+				elseif g_player.gold >= price
 					g_player.gold -= price
 					g_player.items[] = 'せいすい'
 					coroutine.yield 1, L'\n＊「ありがとうごさいます。\n＊「もうひとびん\n　　かわれますか？'
@@ -621,9 +634,9 @@ export 宝箱 = class 宝箱 extends Charactor
 			MessageBoxRetro({ L('%sは　%sゴールドを\nてにいれた。🔻')\format(g_player.name, toZenkaku(@gold_or_item)) })\attach()
 		else
 			MessageBoxRetro({ L('%sは　%sを\nてにいれた。🔻')\format(g_player.name, @gold_or_item) })\attach()
-			if lume.find(武器一覧, @gold_or_item) then g_player.武器, @gold_or_item = @gold_or_item, g_player.武器
-			if lume.find(鎧一覧, @gold_or_item) then g_player.鎧, @gold_or_item = @gold_or_item, g_player.鎧
-			if lume.find(盾一覧, @gold_or_item) then g_player.盾, @gold_or_item = @gold_or_item, g_player.盾
+			if lume.find(lume.keys(武器一覧), @gold_or_item) then g_player.武器, @gold_or_item = @gold_or_item, g_player.武器
+			elseif lume.find(lume.keys(鎧一覧), @gold_or_item) then g_player.鎧, @gold_or_item = @gold_or_item, g_player.鎧
+			elseif lume.find(lume.keys(盾一覧), @gold_or_item) then g_player.盾, @gold_or_item = @gold_or_item, g_player.盾
 			g_player.items[] = @gold_or_item
 
 export 扉 = class 扉 extends Charactor
@@ -759,7 +772,8 @@ export class Battle extends MessageBoxRetro
 				coroutine.yield 1, L('\nあなたが　ひかりのたまを　かざすと\nまばゆいばかりの　ひかりが\nあふれだす……🔻')
 				coroutine.yield 1, L('\nこのくにに　へいわが　もどったのだ。🔻')
 				g_player.items[] = L'ひかりのたま'
-				coroutine.yield 1, Scene.current.parent\blackout -> Scene.current = require('DQ1_全体マップ').build_atりゅうおうの城
+				Scene.current\detach()
+				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atりゅうおうの城()
 			t = LevelUps[g_player.level+1]
 			if t and g_player.経験値 >= t.経験値
 				play_wait 'assets/sounds/mml2ogg/レベルアップ.ogg'
@@ -1137,7 +1151,7 @@ class Status extends Scene
 		gr.setScissor()
 
 export g_player = with Charactor(11, 13, {0x20,0x21}) -- luaは１始まりなのでmapdataを調べる時はx y ともに+1する
-	.name, .level = 'ああああ', 1
+	.name, .level = arg[2] or 'ああああ', 1
 	.トヘロスcount, .せいすいcount, .レミーラcount, .まほうのよろいcount = -1, -1, -1, 0
 	.攻撃力 = => @ちから + (武器一覧[@武器] or 0)
 	.守備力 = => idiv(@素早さ, 2) + (鎧一覧[@鎧] or 0) + (盾一覧[@盾] or 0)
@@ -1148,9 +1162,9 @@ export g_player = with Charactor(11, 13, {0x20,0x21}) -- luaは１始まりな�
 			coroutine.yield 1, L('%sは　じぶんの　あしもとを\nしらべた。🔻')\format(@name)
 			if item
 				coroutine.yield 1, L('\nなんと　%sを　みつけた！🔻')\format(item)
-				if lume.find(lume.keys(@@武器一覧), item) then g_player.武器, item = item, g_player.武器
-				if lume.find(lume.keys(@@鎧一覧), item) then g_player.鎧, item = item, g_player.鎧
-				if lume.find(lume.keys(@@盾一覧), item) then g_player.盾, item = item, g_player.盾
+				if lume.find(lume.keys(武器一覧), item) then g_player.武器, item = item, g_player.武器
+				elseif lume.find(lume.keys(鎧一覧), item) then g_player.鎧, item = item, g_player.鎧
+				elseif lume.find(lume.keys(盾一覧), item) then g_player.盾, item = item, g_player.盾
 				@items[] = item
 			else coroutine.yield 1, L'\nしかし　なにも　みつからなかった。🔻'
 			nil
@@ -1196,15 +1210,15 @@ export g_player = with Charactor(11, 13, {0x20,0x21}) -- luaは１始まりな�
 				name = @buttons[@index].id
 				if lume.find(lume.keys(道具一覧), name) then MessageBoxRetro({<index>: coroutine.wrap 道具一覧[name].gen_messages(g_player)})\attach()
 				elseif lume.find(lume.keys(武器一覧), name)
-					g_player.武器, tmp = name, g_player.武器
+					g_player.武器, tmp = lume.remove(g_player.items, name), g_player.武器
 					g_player.items[] = tmp
 					MessageBoxRetro({L('%sは　%sを　そうびした。🔻')\format(g_player.name, name)})\attach()
 				elseif lume.find(lume.keys(鎧一覧), name)
-					g_player.鎧, tmp = name, g_player.鎧
+					g_player.鎧, tmp = lume.remove(g_player.items, name), g_player.鎧
 					g_player.items[] = tmp
 					MessageBoxRetro({L('%sは　%sを　そうびした。🔻')\format(g_player.name, name)})\attach()
 				elseif lume.find(lume.keys(盾一覧), name)
-					g_player.盾, tmp = name, g_player.盾
+					g_player.盾, tmp = lume.remove(g_player.items, name), g_player.盾
 					g_player.items[] = tmp
 					MessageBoxRetro({L('%sは　%sを　そうびした。🔻')\format(g_player.name, name)})\attach()
 			\attach()
@@ -1223,77 +1237,78 @@ export Title = class Title extends SelectBox
 
 	start_atガライの町: =>
 		g_player = with g_player
-			.name, .level = 'ああああ', 11
+			.name, .level = _G.arg[2] or 'ああああ', 12
 			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
 			.hp, .mp, gold = .maxhp, .maxmp, .経験値
 			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
 			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.chipids = {0x26, 0x27}
-		_G.PROJECTNAME = ''--require('DQ1_全体マップ').save = nil--lume.noop
+		_G.PROJECTNAME = '' -- saveしなくなる
 		Scene.current = require('DQ1_ガライの町').build_from西口()
 	start_at沼地の洞窟: =>
 		g_player = with g_player
-			.name, .level = 'ああああ', 13
+			.name, .level = _G.arg[2] or 'ああああ', 15
 			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
 			.hp, .mp, gold = .maxhp, .maxmp, .経験値
 			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
-			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
+			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ', L'ぎんのたてごと'}
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.chipids = {0x26, 0x27}
-		_G.PROJECTNAME = ''--require('DQ1_全体マップ').save = nil--lume.noop
+		_G.PROJECTNAME = ''
 		Scene.current = require('DQ1_沼地の洞窟').build_fromラダトーム方面()
 	start_at岩山の洞窟: =>
 		g_player = with g_player
-			.name, .level = 'ああああ', 15
+			.name, .level = _G.arg[2] or 'ああああ', 18
 			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
 			.hp, .mp, gold = .maxhp, .maxmp, .経験値
 			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
-			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
+			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ', L'ぎんのたてごと'}
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.chipids = {0x26, 0x27}
-		_G.PROJECTNAME = ''--require('DQ1_全体マップ').save = nil--lume.noop
+		_G.PROJECTNAME = ''
 		Scene.current = require('DQ1_岩山の洞窟').build_from地上()
 	start_atドムドーラの町: =>
 		g_player = with g_player
-			.name, .level = 'ああああ', 17
+			.name, .level = _G.arg[2] or 'ああああ', 21
 			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
 			.hp, .mp, gold = .maxhp, .maxmp, .経験値
 			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
-			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ'}
+			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ', L'ぎんのたてごと', L'ようせいのふえ'}
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.chipids = {0x26, 0x27}
-		_G.PROJECTNAME = ''--require('DQ1_全体マップ').save = nil--lume.noop
+		_G.PROJECTNAME = ''
 		Scene.current = require('DQ1_ドムドーラの町').build()
 	start_atりゅうおうの城: =>
 		g_player = with g_player
-			.name, .level = 'ああああ', 19
+			.name, .level = _G.arg[2] or 'ああああ', 24
 			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
 			.hp, .mp, gold = .maxhp, .maxmp, .経験値
 			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
-			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ', L'ロトのしるし', }
+			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'キメラのつばさ', L'ぎんのたてごと', L'ようせいのふえ', L'ロトのしるし', }
 			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.chipids = {0x26, 0x27}
-		_G.PROJECTNAME = ''--require('DQ1_全体マップ').save = nil--lume.noop
+		_G.PROJECTNAME = ''
 		Scene.current = require('DQ1_りゅうおうの城').build_from入口()
 
-
-love.load = ->
+love.load = (_, args)->
+	_G.arg = args
 	vudu?.initialize()
 	vudu?.initializeDefaultHotkeys()
 	if DEBUGMODE
 		g_player = with g_player
-			.level = 21
+			.level = 29
 			{経験値: .経験値, ちから: .ちから, 素早さ: .素早さ, maxhp: .maxhp, maxmp: .maxmp} = LevelUps[.level]
 			.hp, .mp = .maxhp, .maxmp
 			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
 			.gold = .経験値
 			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'たいまつ', L'キメラのつばさ', L'ぎんのたてごと', L'にじのしずく', L'おうじょのあい', L'ひかりのたま', L'ようせいのふえ'}
 			-- .武器, .鎧, .盾 = L'こんぼう', L'かわのふく', L'かわのたて'
-			.武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
+			-- .武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
+			.武器, .鎧, .盾 = L'ロトのつるぎ', L'ロトのよろい', L'てつのたて'
 			-- .flags[] = L'呪い'
 			.chipids = {0x26, 0x27}
-		Title()\attach()
+		-- Title()\attach()
 		-- require('DQ1_玉座').build_opening()\attach()
 		-- require('DQ1_玉座').build_死に戻り()\attach()
 		-- require('DQ1_ラダトーム城').build_at城門()\attach()
@@ -1308,7 +1323,7 @@ love.load = ->
 		-- require('DQ1_雨の祠').build()\attach()
 		-- require('DQ1_ドムドーラの町').build()\attach()
 		-- require('DQ1_メルキドの町').build_from入口()\attach()
-		-- require('DQ1_りゅうおうの城').build_from入口()\attach()
+		require('DQ1_りゅうおうの城').build_from入口()\attach()
 		-- require('DQ1_りゅうおうの城').build_B7_fromB6_1()\attach()
 	else
 		Title()\attach()
