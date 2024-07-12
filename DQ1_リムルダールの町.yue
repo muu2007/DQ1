@@ -148,6 +148,8 @@ build = ->
 		.charactors[] = 武器屋(31,15,{{L'どうのつるぎ', 108}, {L'てつのおの', 560}, {L'はがねのつるぎ', 1500}, {L'てつのよろい', 1000}, {L'はがねのよろい', 3000}, {L"まほうのよろい", 7700} })
 		.charactors[] = with Charactor(35,8,{0x40,0x41}) -- 男の子
 			.talk = => MessageBoxRetro({ L'＊「ちゅん　でーす。\n　　かのじょを　まっています。🔻'})\attach()
+		.charactors[] = with Charactor(8,34,{0x3c,0x3d}) -- 女の子
+			.talk = => MessageBoxRetro({ L'＊「もう　ちゅんさまったら\n　　おそいわねえ。ぷんぷん。🔻'})\attach()
 		.charactors[] = with Charactor(10,12,{0x3e,0x3f}) -- 商人
 			.talk = => MessageBoxRetro({ L'＊「いらっしゃいませ。🔻'})\attach()
 		.traps[] = with {12, 11}
@@ -176,7 +178,7 @@ build_よげんじょ = ->
 			.talk = =>
 				Scene.current = build_fromよげんじょ()
 		.charactors[] = with Charactor(9,12,{0x3a,0x3b}) -- 老人
-			.talk = => MessageBoxRetro({ coroutine.wrap((_, _)->
+			.talk = => MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
 				coroutine.yield 1, L'＊「ここは　よげんじょ\n　　せいなる　ほこらをみつけたか？'
 				sb = SelectBoxRetro({L'はい', L'いいえ'})
 				coroutine.yield 1, sb\attach()
@@ -185,7 +187,7 @@ build_よげんじょ = ->
 				else
 					coroutine.yield 1, L'\n＊「みなみに　ゆくがよい。🔻'
 				nil
-			)})\attach()
+				)})\attach()
 		.charactors[] = with Charactor(9,9,{0x3c,0x3d}) -- 女の子
 			.update = coroutine.wrap(._update_randomwalk)
 			.talk = => MessageBoxRetro({ L'＊「やがて　このまちも\n　　まものたちに…\n　　ああ　カミさま…🔻' })\attach()

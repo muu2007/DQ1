@@ -75,13 +75,13 @@ export build = ->
 			.update = coroutine.wrap(._update_randomwalk)
 			.talk = => MessageBoxRetro({ L'＊「ふるい　いいつたえでは\n　　ようせいたちは　ゴーレムを\n　　ねむらせた　そうじゃ。🔻'})\attach()
 		.charactors[] = with Charactor(20,9,{0x3c,0x3d}) -- 女性
-			.talk = => MessageBoxRetro({ L'＊「ここは　ろてんぶろで\n　　ございまーす。🔻', L'＊「こうのうは　リュウマチで\n　　ございまーす。🔻'})\attach()
+			.talk = => MessageBoxRetro({ L'＊「ここは　ろてんぶろで\n　　ございまーす。🔻', L'\n＊「こうのうは　リュウマチで\n　　ございまーす。🔻'})\attach()
 		.charactors[] = 扉(15, 20, 'マイラの村の扉1')
 		.charactors[] = with Charactor(14,18,{0x40,0x41}) -- 男の子
 			.update = coroutine.wrap(._update_randomwalk)
 			.talk = => MessageBoxRetro({ L'＊「おまえがロトのちをひくもの？\n　　なにかしょうこがあるのか？🔻'})\attach() --[ ] todo:まとめられないか？
 		.charactors[] = with Charactor(9,31,{0x38,0x39}) -- 戦士
-			.talk = => MessageBoxRetro({ L'＊「うわさでは　リムルダールに\nカギをうるみせが　あるらしい。🔻'})\attach()
+			.talk = => MessageBoxRetro({ L'＊「うわさでは　リムルダールに\n　　カギをうるみせが　あるらしい。🔻'})\attach()
 		.charactors[] = with Charactor(8,31,{0x3e,0x3f}) -- 商人
 			.talk = => MessageBoxRetro({ <index>: coroutine.wrap((_, _)->
 				coroutine.yield 1, L'＊「みなみの　しまに　いきましたか？'

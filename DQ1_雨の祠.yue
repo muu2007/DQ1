@@ -41,7 +41,10 @@ export build = ->
 			.talk = =>
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_at雨の祠()
-		if not lume.find(g_player.items, L'あまぐものつえ')
+		if lume.find(g_player.items, L'あまぐものつえ') or lume.find(g_player.items, L'にじのしずく')
+			.charactors[] = with Charactor(12,11,{0x3a,0x3b}) -- 老人
+				.talk = => MessageBoxRetro({ L'＊「ここには　もう　ようがないはず。\n　　いくがよい。🔻' })\attach()
+		elseif not lume.find(g_player.items, L'あまぐものつえ')
 			.charactors[] = with self = Charactor(12,11,{0x3a,0x3b}) -- 老人
 				if not 'ぎんのたてごと' in g_player.items
 					.talk = =>

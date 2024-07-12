@@ -291,6 +291,7 @@ build = ->
 			.bg.data[57][77] = 0x29
 			.bg\set(.bg.data)
 		BGM Field.BGM
+		g_player.レミーラcount = -1
 
 save = ->
 	if #PROJECTNAME == 0 then return

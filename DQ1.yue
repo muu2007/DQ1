@@ -406,7 +406,8 @@ export LevelUps = {
 			Scene.current.parent.bg.data[57][77] = 0x29
 			Scene.current.parent.bg\set(Scene.current.parent.bg.data)
 		else
-			coroutine.yield 1, L'ここでは　つかえない。🔻'
+			coroutine.yield 1, L('%sは　にじのしずくを　てんにかざした。🔻')\format(subject.name)
+			coroutine.yield 1, L'\nしかし　ここに　にじは　かからなかった。🔻'
 		nil
 	}
 }
@@ -487,8 +488,6 @@ class 武器屋.MessageBox extends MessageBoxRetro
 									if g_player.盾 then g_player.items[] = g_player.盾
 									g_player.盾 = name
 								g_player.gold -= price--goods[sb2.index][2]
-								n = (if g_player.武器 then 1 else 0) + (if g_player.盾 then 2 else 0) -- 勇者のスプライト変更
-								g_player.chipids = {0x20+n*2, 0x20+n*2+1}
 							else coroutine.yield 1, L'\n＊「すまないが　おかねが\n　　たりないようだ。'
 					coroutine.yield 1, L'\n＊「ほかに　なにか　かうかね？'
 				else break
@@ -675,7 +674,7 @@ export class Battle extends MessageBoxRetro
 						play'assets/sounds/mml2ogg/こうげき.ogg'
 						n = math.floor((@monster.攻撃力 - g_player\守備力()/2) * lume.random(0.25, 0.5))--(0.8, 1.0))
 						if n <= 0 or math.random() < g_player.攻撃回避率
-							coroutine.yield 1, L'\n　ミス！\nダメージをうけない！' -- todo: ミスの音！
+							coroutine.yield 1, L'\n　ミス！\n　ダメージをうけない！' -- todo: ミスの音！
 						else
 							for p in *{--[[{-4, -4}, {4, 4}, {4, -3}, {-3, 4}, ]]{-3, -3}, {2, 3}, {2, -3}, {-3, 2}, {-2, -2}, {2, 1}, {1, -2}, {-1, 1}, {-1, -1}, {0, 0}}
 								@offset = p
@@ -1043,7 +1042,7 @@ export Field = class Field extends Scene -- 前方宣言(local *)のため
 				g_player.x += d[1]
 				g_player.y += d[2]
 				if @__class == Field then g_player.トヘロスcount, g_player.せいすいcount = g_player.トヘロスcount - 1, g_player.せいすいcount - 1
-				if @__class == Dungeon then g_player.レミーラcount = g_player.レミーラcount - 1
+				if issubclass(@__class, Dungeon) then g_player.レミーラcount = g_player.レミーラcount - 1
 				g_player.まほうのよろいcount += 1
 				@scroll = {d[1]*16, d[2]*16}
 				-- pp g_player, @scroll
@@ -1303,6 +1302,7 @@ love.load = (_, args)->
 			.spells = [info.呪文 for info in *LevelUps[, .level] when info.呪文]
 			.gold = .経験値
 			.items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'たいまつ', L'キメラのつばさ', L'ぎんのたてごと', L'にじのしずく', L'おうじょのあい', L'ひかりのたま', L'ようせいのふえ'}
+			-- .items = {L'やくそう', L'やくそう', L'かぎ', L'かぎ', L'たいまつ', L'キメラのつばさ', L'ぎんのたてごと', L'ロトのしるし', }
 			-- .武器, .鎧, .盾 = L'こんぼう', L'かわのふく', L'かわのたて'
 			-- .武器, .鎧, .盾 = L'はがねのつるぎ', L'ロトのよろい', L'てつのたて'
 			.武器, .鎧, .盾 = L'ロトのつるぎ', L'ロトのよろい', L'てつのたて'
@@ -1322,8 +1322,8 @@ love.load = (_, args)->
 		-- require('DQ1_岩山の洞窟').build_from地上()\attach()
 		-- require('DQ1_雨の祠').build()\attach()
 		-- require('DQ1_ドムドーラの町').build()\attach()
-		-- require('DQ1_メルキドの町').build_from入口()\attach()
-		require('DQ1_りゅうおうの城').build_from入口()\attach()
+		require('DQ1_メルキドの町').build_from入口()\attach()
+		-- require('DQ1_りゅうおうの城').build_from入口()\attach()
 		-- require('DQ1_りゅうおうの城').build_B7_fromB6_1()\attach()
 	else
 		Title()\attach()

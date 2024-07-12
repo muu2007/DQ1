@@ -52,7 +52,11 @@ export build = ->
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atドムドーラの町()
 		.traps[] = with {26, 20}
-			.talk = => Battle(generateMonster 'あくまのきし')\attach()
+			.talk = => with b = Battle(generateMonster 'あくまのきし')
+				.detach = =>
+					if .monster.hp <= 0 then lume.noop() else g_player.x = 25 -- 逃げたとき１マス下がる
+					Battle.__base.detach(b) -- super()
+				\attach()
 		_monster = -> generateMonster lume.weightedchoice {スターキメラ: 1, キラーリカント: 1, ドラゴン: 1, だいまどう: 1}
 		.traps[] = with {}
 			.check = (_)-> math.random() < 0.2

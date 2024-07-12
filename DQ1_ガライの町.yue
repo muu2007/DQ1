@@ -239,20 +239,20 @@ build = ->
 				Scene.current\blackout -> Scene.current = require('DQ1_全体マップ').build_atガライの町()
 		.charactors[] = with Charactor(10,8,{0x3a,0x3b}) -- 老人
 			.update = coroutine.wrap(._update_randomwalk)
-			.talk = => MessageBoxRetro({ L"＊「ふるい　いいつたえでは　いだいな　ぎんゆうしじん　ガライが　このまちを　つくったそうです。🔻"})\attach()
+			.talk = => MessageBoxRetro({ L"＊「ふるい　いいつたえでは\n　　いだいな　ぎんゆうしじん　ガライが\n　　このまちを　つくったそうです。🔻"})\attach()
 		.charactors[] = 道具屋(13, 9, {{L"やくそう", 10}, {L"たいまつ", 8}, {L"りゅうのうろこ", 20} })
 		.charactors[] = with Charactor(10,15,{0x3a,0x3b}) -- 老人
-			.talk = => MessageBoxRetro({ L"＊「うわさでは　ローラひめは\nどこかの　どうくつに　とじこめられたそうじゃ。🔻", L'\nもう　たすけたされたかのう…。🔻'})\attach()
+			.talk = => MessageBoxRetro({ L"＊「うわさでは　ローラひめは\n　　どこかの　どうくつに\n　　とじこめられたそうじゃ。🔻", L'\n　　もう　たすけたされたかのう…。🔻'})\attach()
 		.charactors[] = with Charactor(15,15,{0x38,0x39}) -- 戦士
 			.update = coroutine.wrap(._update_randomwalk)
-			.talk = => MessageBoxRetro({ L"＊「おれは　みやおうだ。\nキムこうを　さがしている。🔻"})\attach()
+			.talk = => MessageBoxRetro({ L"＊「おれは　みやおうだ。\n　　キムこうを　さがしている。🔻"})\attach()
 		.charactors[] = 武器屋(18, 16, {{L'こんぼう', 60}, {L'どうのつるぎ', 180}, {L'てつのおの', 560}, {L'かわのふく', 70}, {L'くさりかたびら', 300}, {L'てつのよろい', 1000}, {L'てつのたて', 800} })
 		.charactors[] = with Charactor(18,8,{0x3c,0x3d}) -- 女の子
 			.update = coroutine.wrap(._update_randomwalk)
 			.talk = => MessageBoxRetro({ L"＊「むかしがたりのまち\n　　ガライへ　ようこそ。🔻" })\attach()
 		.charactors[] = with Charactor(20,9,{0x40,0x41}) -- 男の子
 			.update = coroutine.wrap(._update_randomwalk)
-			.talk = => MessageBoxRetro({ L"＊「わたしは　きいた！\n　　なんと　ひめを　さらったまものがひがしのほうに　とびさったとか！🔻"})\attach()
+			.talk = => MessageBoxRetro({ L"＊「わたしは　きいた！\n　　なんと　ひめを　さらったまものが\n　　ひがしのほうに　とびさったとか！🔻"})\attach()
 		.charactors[] = 宿屋(25, 13, 25)
 		.charactors[] = 扉(25, 8, 'ガライの墓場エントランスの扉')
 		.traps[] = with {25, 8}
@@ -272,7 +272,6 @@ export build_from東口 = ->
 build_from墓場エントランス = ->
 	with build()
 		g_player.x, g_player.y = 25, 9
-		BGM('assets/sounds/mml2ogg/town.ogg')
 
 -------------------------------
 build_墓場エントランス = ->
@@ -318,7 +317,7 @@ build_墓場通路 = ->
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout(->Scene.current = require('DQ1_全体マップ').build_atガライの町())
 		.charactors[] = with Charactor(22,9,{0x3a,0x3b}) -- 老人
-			.talk = => MessageBoxRetro({ L"＊「たてごとは　まものたちを\nよびよせる\nガライのはかに　ちかよるな！🔻"})\attach()
+			.talk = => MessageBoxRetro({ L"＊「たてごとは　まものたちを\n　　よびよせる\n　　ガライのはかに　ちかよるな！🔻"})\attach()
 		.traps[] = with {11, 11}
 			.talk = => Scene.current = build_墓場エントランス_from通路()
 		.traps[] = with {27, 8}
@@ -332,7 +331,7 @@ build_墓場通路_fromエントランス = ->
 
 build_墓場通路_fromB1 = ->
 	with build_墓場通路()
-		g_player.x, g_player.y = 27, 8
+		g_player.x, g_player.y, g_player.レミーラcount = 27, 8, -1
 		BGM Town.BGM
 
 --------------------------------------
@@ -459,7 +458,7 @@ build_墓場B3 = ->
 		-- .リレミト = => Scene.current\blackout -> Scene.current = build_墓場通路_fromB1()
 		_monster = -> generateMonster lume.weightedchoice {ヘルゴースト: 1, リカントマルム: 1, メーダロード: 1, ドロルメイジ: 1, しりょうのきし: 1}
 		.traps[] = with {}
-			.check = (_)-> math.random(_monster()) < 0.2
+			.check = (_)-> math.random() < 0.2
 			.talk = => Battle(_monster())\attach()
 		.ぎんのたてごと = => Battle(_monster())\attach()
 
@@ -493,7 +492,7 @@ build_墓場B4 = ->
 			.talk = =>
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout -> Scene.current = build_墓場B3_fromB4_1()
-		.traps[] = with {12, 13}
+		.traps[] = with {13, 13}
 			.talk = =>
 				play'assets/DQ1/階段.ogg'
 				Scene.current\blackout -> Scene.current = build_墓場B3_fromB4_2()
@@ -509,4 +508,4 @@ build_墓場B4_fromB3_1 = ->
 
 build_墓場B4_fromB3_2 = ->
 	with build_墓場B4()
-		g_player.x, g_player.y = 12, 13
+		g_player.x, g_player.y = 13, 13

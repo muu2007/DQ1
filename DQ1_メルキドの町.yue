@@ -115,12 +115,12 @@ export build = ->
 		.charactors[] = with Charactor(27,26,{0x40,0x41}) -- 商人
 			.update = coroutine.wrap(._update_randomwalk)
 			.talk = => MessageBoxRetro({ L'＊「えーん。　あてが　まいごの\n　　キムこう　だす。🔻' })\attach()
-		.charactors[] = with Charactor(26,29,{0x3a,0x3b}) -- 商人
+		.charactors[] = with Charactor(26,29,{0x3a,0x3b}) -- 老人
 			.talk = => MessageBoxRetro({ L'＊「ふるい　いいつたえでは\n　　ゆうしゃロトのつかった　つるぎは\n　　はがねをも　くだいたそうじゃ。🔻' })\attach()
 		.charactors[] = せいすい屋(29,20,38)
 		.charactors[] = 扉(21,32, 'メルキドの神殿の扉1')
 		.charactors[] = 扉(22,32, 'メルキドの神殿の扉2')
-		.charactors[] = with Charactor(29,29,{0x3a,0x3b}) -- 老人
+		.charactors[] = with Charactor(21,35,{0x3a,0x3b}) -- 老人
 			.update = coroutine.wrap(._update_randomwalk)
 			.talk = => MessageBoxRetro({ L'＊「ゆうしゃのため　いのりましょう。🔻', L'\n＊「ひかりが　そなたと　ともに\n　　ありますように…🔻', L'\n＊「ゆくがよい。\n　　そして　さがすがよい。🔻', L'\n＊「ラダトームの　おしろまで\n　　きたに７４　にしに４０の\n　　そのばしょを！🔻'})\attach()
 
